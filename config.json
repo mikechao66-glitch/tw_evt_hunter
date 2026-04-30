@@ -4,10 +4,11 @@
         "chat_id": "7523076072"
     },
     "mops_keywords": {
-        "發言人": true
+        "台鋼": true,
+        "流動比率": true
     },
     "news_keywords": {
-        "威盛": true,
-        "AI伺服器": true
+        "欣興": true,
+        "AI": true
     }
 }

@@ -191,20 +191,29 @@ with col_news:
 
 # Auto update loop
 if auto_update:
-    # Check if we should run it right away upon checking the box
-    if 'auto_run_initialized' not in st.session_state or not st.session_state['auto_run_initialized']:
-        st.session_state['auto_run_initialized'] = True
+    # 使用時間戳記判斷是否該執行更新，避免因 UI 互動觸發 rerun 導致立即掃描
+    now_ts = time.time()
+    
+    if 'last_auto_update_ts' not in st.session_state:
+        st.session_state['last_auto_update_ts'] = now_ts
         with st.spinner("自動掃描初始化中..."):
             run_hunter()
-            st.session_state['last_update_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            st.session_state['last_update_time'] = datetime.fromtimestamp(now_ts).strftime("%Y-%m-%d %H:%M:%S")
         st.rerun()
         
-    # Wait 30 minutes and rerun
-    time.sleep(1800)
-    
-    with st.spinner("定期自動更新中..."):
-        run_hunter()
-        st.session_state['last_update_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    st.rerun()
+    elapsed = now_ts - st.session_state['last_auto_update_ts']
+    if elapsed >= 1800:
+        st.session_state['last_auto_update_ts'] = now_ts
+        with st.spinner("定期自動更新中..."):
+            run_hunter()
+            st.session_state['last_update_time'] = datetime.fromtimestamp(now_ts).strftime("%Y-%m-%d %H:%M:%S")
+        st.rerun()
+    else:
+        # 剩餘等待時間
+        wait_seconds = 1800 - elapsed
+        time.sleep(wait_seconds)
+        st.rerun()
 else:
-    st.session_state['auto_run_initialized'] = False
+    # 關閉自動更新時，清除紀錄
+    if 'last_auto_update_ts' in st.session_state:
+        del st.session_state['last_auto_update_ts']
