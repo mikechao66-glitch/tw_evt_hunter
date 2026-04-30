@@ -3,12 +3,8 @@
         "bot_token": "8707765736:AAE3CFdbWx8HObVKTHgpsILIhDRV2eezSVg",
         "chat_id": "7523076072"
     },
-    "mops_keywords": {
-        "台鋼": true,
-        "流動比率": true
-    },
+    "mops_keywords": {},
     "news_keywords": {
-        "欣興": true,
-        "AI": true
+        "汎銓第1季": true
     }
 }
