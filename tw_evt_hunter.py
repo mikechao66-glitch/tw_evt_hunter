@@ -218,7 +218,7 @@ class NewsCrawler:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
         # 限定抓取目標網站 (包含指定財經網站)
-        self.site_query = "(site:yahoo.com.tw/finance OR site:cnyes.com OR site:money.udn.com OR site:ctee.com.tw OR site:chinatimes.com OR site:ltn.com.tw)"
+        self.site_query = "(site:tw.news.yahoo.com OR site:tw.stock.yahoo.com OR site:cnyes.com OR site:money.udn.com OR site:ctee.com.tw OR site:chinatimes.com OR site:ltn.com.tw OR site:wantgoo.com OR site:cmoney.tw)"
 
     def fetch_news(self):
         all_news = []
