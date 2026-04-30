@@ -29,8 +29,14 @@ def run_hunter():
         chat_id=config['telegram']['chat_id']
     )
     
-    mops_crawler = MopsCrawler(keywords=config.get('mops_keywords', []))
-    news_crawler = NewsCrawler(keywords=config.get('news_keywords', []))
+    mops_kw_config = config.get('mops_keywords', {})
+    mops_kws = [k for k, v in mops_kw_config.items() if v] if isinstance(mops_kw_config, dict) else mops_kw_config
+    
+    news_kw_config = config.get('news_keywords', {})
+    news_kws = [k for k, v in news_kw_config.items() if v] if isinstance(news_kw_config, dict) else news_kw_config
+
+    mops_crawler = MopsCrawler(keywords=mops_kws)
+    news_crawler = NewsCrawler(keywords=news_kws)
 
     all_events = []
 

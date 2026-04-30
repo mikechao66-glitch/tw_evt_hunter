@@ -12,10 +12,19 @@ st.set_page_config(page_title="台股事件獵人", layout="wide", page_icon="�
 CONFIG_FILE = "config.json"
 
 def load_config():
+    config = {"telegram": {"bot_token": "", "chat_id": ""}, "mops_keywords": {}, "news_keywords": {}}
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {"telegram": {"bot_token": "", "chat_id": ""}, "mops_keywords": [], "news_keywords": []}
+            loaded = json.load(f)
+            config.update(loaded)
+            
+    # 遷移舊版 list 格式到 dict 格式
+    if isinstance(config.get('mops_keywords'), list):
+        config['mops_keywords'] = {kw: True for kw in config['mops_keywords']}
+    if isinstance(config.get('news_keywords'), list):
+        config['news_keywords'] = {kw: True for kw in config['news_keywords']}
+        
+    return config
 
 def save_config(config):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
@@ -34,11 +43,11 @@ def display_event(evt):
     
     html = f"""
     <div style='border:1px solid #ddd; padding:15px; border-radius:8px; margin-bottom:10px; background-color:#fff; color:#333;'>
-        <div style='font-size:12px; color:#888; margin-bottom:5px;'>
-            發佈時間：{evt['datetime_str']}
-        </div>
-        <div style='font-size:16px; font-weight:bold; margin-bottom:8px;'>
+        <div style='font-size:16px; font-weight:bold; margin-bottom:5px;'>
             {title_label}：{evt['title']}
+        </div>
+        <div style='font-size:12px; color:#888; margin-bottom:8px;'>
+            發佈時間：{evt['datetime_str']}
         </div>
         <div style='margin-bottom:10px;'>
             {tags_html}
@@ -74,47 +83,54 @@ with st.sidebar:
     st.title("🔑 關鍵字設定")
     
     # MOPS Keywords
-    st.subheader("重大訊息關鍵字")
-    mops_kws = st.session_state['config']['mops_keywords']
-    for kw in list(mops_kws):
-        col1, col2 = st.columns([0.8, 0.2])
-        col1.write(f"- {kw}")
-        if col2.button("❌", key=f"del_mops_{kw}", help="刪除"):
-            st.session_state['config']['mops_keywords'].remove(kw)
-            save_config(st.session_state['config'])
-            st.rerun()
-            
-    new_mops = st.text_input("新增重大訊息關鍵字")
-    if st.button("新增", key="add_mops"):
-        if new_mops and new_mops not in st.session_state['config']['mops_keywords']:
-            st.session_state['config']['mops_keywords'].append(new_mops)
-            save_config(st.session_state['config'])
-            st.rerun()
+    with st.expander("重大訊息關鍵字"):
+        mops_kws = st.session_state['config']['mops_keywords']
+        for kw, enabled in list(mops_kws.items()):
+            col1, col2 = st.columns([0.8, 0.2])
+            new_val = col1.checkbox(f"{kw}", value=enabled, key=f"mops_chk_{kw}")
+            if new_val != enabled:
+                st.session_state['config']['mops_keywords'][kw] = new_val
+                save_config(st.session_state['config'])
+                st.rerun()
+                
+            if col2.button("❌", key=f"del_mops_{kw}", help="刪除"):
+                del st.session_state['config']['mops_keywords'][kw]
+                save_config(st.session_state['config'])
+                st.rerun()
+                
+        new_mops = st.text_input("新增重大訊息關鍵字")
+        if st.button("新增", key="add_mops"):
+            if new_mops and new_mops not in st.session_state['config']['mops_keywords']:
+                st.session_state['config']['mops_keywords'][new_mops] = True
+                save_config(st.session_state['config'])
+                st.rerun()
 
-    st.divider()
-    
     # News Keywords
-    st.subheader("新聞關鍵字")
-    news_kws = st.session_state['config']['news_keywords']
-    for kw in list(news_kws):
-        col1, col2 = st.columns([0.8, 0.2])
-        col1.write(f"- {kw}")
-        if col2.button("❌", key=f"del_news_{kw}", help="刪除"):
-            st.session_state['config']['news_keywords'].remove(kw)
-            save_config(st.session_state['config'])
-            st.rerun()
-            
-    new_news = st.text_input("新增新聞關鍵字")
-    if st.button("新增", key="add_news"):
-        if new_news and new_news not in st.session_state['config']['news_keywords']:
-            st.session_state['config']['news_keywords'].append(new_news)
-            save_config(st.session_state['config'])
-            st.rerun()
+    with st.expander("新聞關鍵字"):
+        news_kws = st.session_state['config']['news_keywords']
+        for kw, enabled in list(news_kws.items()):
+            col1, col2 = st.columns([0.8, 0.2])
+            new_val = col1.checkbox(f"{kw}", value=enabled, key=f"news_chk_{kw}")
+            if new_val != enabled:
+                st.session_state['config']['news_keywords'][kw] = new_val
+                save_config(st.session_state['config'])
+                st.rerun()
+                
+            if col2.button("❌", key=f"del_news_{kw}", help="刪除"):
+                del st.session_state['config']['news_keywords'][kw]
+                save_config(st.session_state['config'])
+                st.rerun()
+                
+        new_news = st.text_input("新增新聞關鍵字")
+        if st.button("新增", key="add_news"):
+            if new_news and new_news not in st.session_state['config']['news_keywords']:
+                st.session_state['config']['news_keywords'][new_news] = True
+                save_config(st.session_state['config'])
+                st.rerun()
             
     st.divider()
     
     # Auto Update
-    st.title("⏱️ 自動更新設定")
     auto_update = st.checkbox("啟動自動更新", value=False)
     
     # State for auto update

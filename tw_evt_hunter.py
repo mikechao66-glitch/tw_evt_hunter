@@ -5,7 +5,7 @@ import requests
 import time
 import random
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from bs4 import BeautifulSoup
 import urllib.parse
 import hashlib
@@ -74,7 +74,7 @@ class EventDatabase:
             cursor.execute('''
                 SELECT * FROM events 
                 WHERE deleted = 0 
-                ORDER BY timestamp DESC
+                ORDER BY datetime_str DESC
             ''')
             return [dict(row) for row in cursor.fetchall()]
 
@@ -108,82 +108,93 @@ class TelegramNotifier:
 class MopsCrawler:
     def __init__(self, keywords):
         self.keywords = keywords
-        self.url = "https://mops.twse.com.tw/mops/web/ajax_t05sr01_1"
+        self.base_url = "https://mopsov.twse.com.tw/mops/web/"
+        self.ajax_url = "https://mopsov.twse.com.tw/mops/web/ajax_t05sr01_1"
+        self.page_url = "https://mopsov.twse.com.tw/mops/web/t05sr01_1"
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Referer": "https://mops.twse.com.tw/mops/web/t05sr01_1",
-            "Content-Type": "application/x-www-form-urlencoded"
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "zh-TW,zh;q=0.9,en-US;q=0.8",
         }
 
     def fetch_today_events(self):
         all_events = []
-        types = ['sii', 'otc', 'rotc', 'pub'] # 上市, 上櫃, 興櫃, 公開發行
+        # 計算近二日的日期範圍供過濾
+        two_days_ago = datetime.now() - timedelta(days=2)
         
-        for t in types:
-            try:
-                payload = {
-                    "encodeURIComponent": "1",
-                    "step": "1",
-                    "firstin": "1",
-                    "TYPEK": t,
-                    "co_id": ""
-                }
-                
-                # 加入隨機延遲避免被擋
-                time.sleep(random.uniform(1.5, 3.5))
-                
-                response = requests.post(self.url, headers=self.headers, data=payload, timeout=15)
-                response.encoding = 'utf8'
-                soup = BeautifulSoup(response.text, 'html.parser')
-                
-                # 找尋表格
-                tables = soup.find_all('table', {'class': 'hasBorder'})
-                if not tables:
-                    continue
-                
-                rows = tables[0].find_all('tr')
-                for row in rows[1:]: # Skip header
-                    cols = row.find_all('td')
-                    if len(cols) >= 6:
-                        # 0:公司代號, 1:公司名稱, 2:發言日期, 3:發言時間, 4:主旨, 5:符合條款
-                        co_id = cols[0].text.strip()
-                        co_name = cols[1].text.strip()
-                        date_str = cols[2].text.strip() # 民國年 e.g. 113/04/29
-                        time_str = cols[3].text.strip()
-                        title = cols[4].text.strip()
+        try:
+            # 建立 Session ，先 GET 頁面取得 Cookie
+            session = requests.Session()
+            session.headers.update(self.headers)
+            session.get(self.page_url, timeout=15)
+            time.sleep(random.uniform(1.0, 2.0))
+            
+            # 用正確參數 POST （TYPEK=all, step=0）取得全市場即時重大訊息
+            response = session.post(
+                self.ajax_url,
+                data={'TYPEK': 'all', 'step': '0'},
+                headers={'Referer': self.page_url},
+                timeout=15
+            )
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            tables = soup.find_all('table')
+            if not tables:
+                logger.warning("MOPS: 未找到表格資料")
+                return []
+
+            # 找包含重大訊息資料的最大表格
+            main_table = max(tables, key=lambda t: len(t.find_all('tr')))
+            rows = main_table.find_all('tr')
+            
+            for row in rows[1:]:  # 跳過表頭
+                cols = row.find_all('td')
+                if len(cols) >= 5:
+                    co_id    = cols[0].get_text(strip=True)
+                    co_name  = cols[1].get_text(strip=True)
+                    date_str = cols[2].get_text(strip=True)  # 民國年 e.g. 115/04/30
+                    time_str = cols[3].get_text(strip=True)
+                    title    = cols[4].get_text(strip=True)
+                    
+                    # 跳過空白或非法資料
+                    if not co_id or not title or not date_str:
+                        continue
+                    
+                    # 轉換民國年為西元年
+                    try:
+                        year, month, day = date_str.split('/')
+                        west_year = int(year) + 1911
+                        dt_obj = datetime.strptime(f"{west_year}/{month}/{day} {time_str}", "%Y/%m/%d %H:%M:%S")
+                    except Exception:
+                        dt_obj = datetime.now()
+                    
+                    # 过濾超過二日的訊息
+                    if dt_obj < two_days_ago:
+                        continue
+                    
+                    # 檢查關鍵字
+                    matched_tags = [kw for kw in self.keywords if kw in title]
+                    if matched_tags:
+                        event_id = hashlib.md5(f"mops_{co_id}_{date_str}_{time_str}_{title}".encode('utf-8')).hexdigest()
+                        formatted_time = dt_obj.strftime("%Y/%m/%d %H:%M")
                         
-                        # 檢查關鍵字
-                        matched_tags = [kw for kw in self.keywords if kw in title]
-                        if matched_tags:
-                            event_id = hashlib.md5(f"mops_{co_id}_{date_str}_{time_str}_{title}".encode('utf-8')).hexdigest()
-                            
-                            # 轉換民國年為西元年以便排序
-                            try:
-                                year, month, day = date_str.split('/')
-                                west_year = int(year) + 1911
-                                dt_obj = datetime.strptime(f"{west_year}/{month}/{day} {time_str}", "%Y/%m/%d %H:%M:%S")
-                            except:
-                                dt_obj = datetime.now() # 如果解析失敗，用現在時間
-                                
-                            # 依照需求格式化發布時間 YYYY/MM/DD HH:MM
-                            formatted_time = dt_obj.strftime("%Y/%m/%d %H:%M")
-                                
-                            all_events.append({
-                                'id': event_id,
-                                'source': '公開資訊觀測站',
-                                'type': '重大訊息',
-                                'co_id': co_id,
-                                'co_name': co_name,
-                                'datetime_obj': dt_obj,
-                                'datetime_str': formatted_time,
-                                'title': title,
-                                'link': "https://mops.twse.com.tw/mops/web/t05sr01_1",
-                                'tags': matched_tags
-                            })
-                            
-            except Exception as e:
-                logger.error(f"MOPS 爬取失敗 (TYPEK={t}): {e}")
-                
+                        all_events.append({
+                            'id': event_id,
+                            'source': '公開資訊觀測站',
+                            'type': '重大訊息',
+                            'co_id': co_id,
+                            'co_name': co_name,
+                            'datetime_obj': dt_obj,
+                            'datetime_str': formatted_time,
+                            'title': title,
+                            'link': self.page_url,
+                            'tags': matched_tags
+                        })
+                        
+        except Exception as e:
+            logger.error(f"MOPS 爬取失敗: {e}")
+        
+        logger.info(f"MOPS 共抓取 {len(all_events)} 筆符合條件的重大訊息")
         return all_events
 
 class NewsCrawler:
@@ -197,8 +208,8 @@ class NewsCrawler:
 
     def fetch_news(self):
         all_news = []
-        # 近三日
-        three_days_ago = datetime.now() - timedelta(days=3)
+        # 近二日
+        two_days_ago = datetime.now() - timedelta(days=2)
         
         news_dict = {}
         for kw in self.keywords:
@@ -222,10 +233,12 @@ class NewsCrawler:
                     # 檢查日期是否在三天內
                     try:
                         dt_obj = parsedate_to_datetime(pubDate_str)
-                        # Remove timezone info for comparison
-                        dt_obj_naive = dt_obj.replace(tzinfo=None)
-                        if dt_obj_naive < three_days_ago:
+                        # 轉換為台灣時間 (UTC+8)
+                        dt_obj_tw = dt_obj.astimezone(timezone(timedelta(hours=8)))
+                        dt_obj_naive = dt_obj_tw.replace(tzinfo=None)
+                        if dt_obj_naive < two_days_ago:
                             continue # 太舊的新聞跳過
+
                     except Exception as e:
                         logger.warning(f"無法解析新聞日期: {pubDate_str}")
                         dt_obj_naive = dt_obj
