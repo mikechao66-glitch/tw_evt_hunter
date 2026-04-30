@@ -1,0 +1,15 @@
+{
+    "telegram": {
+        "bot_token": "8707765736:AAE3CFdbWx8HObVKTHgpsILIhDRV2eezSVg",
+        "chat_id": "7523076072"
+    },
+    "mops_keywords": [
+        "營收",
+        "處分",
+        "董事會"
+    ],
+    "news_keywords": [
+        "台積電",
+        "營收"
+    ]
+}
