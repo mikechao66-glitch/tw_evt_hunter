@@ -127,11 +127,13 @@ with st.sidebar:
                 st.rerun()
                 
         new_news = st.text_input("新增新聞關鍵字")
-        if st.button("新增", key="add_news"):
+        col_btn, col_note = st.columns([0.2, 0.8])
+        if col_btn.button("新增", key="add_news"):
             if new_news and new_news not in st.session_state['config']['news_keywords']:
                 st.session_state['config']['news_keywords'][new_news] = True
                 save_config(st.session_state['config'])
                 st.rerun()
+        col_note.caption("💡 提示：使用 `+` 號可進行複合搜尋（例：台積電+法說會）")
             
     st.divider()
     

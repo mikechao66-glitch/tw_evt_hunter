@@ -4,5 +4,7 @@
         "chat_id": "7523076072"
     },
     "mops_keywords": {},
-    "news_keywords": {}
+    "news_keywords": {
+        "台積電+電源龍頭": true
+    }
 }

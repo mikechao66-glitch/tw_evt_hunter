@@ -261,7 +261,15 @@ class NewsCrawler:
                     except Exception:
                         pass
                     
-                    if kw in title:
+                    # 檢查該則新聞符合的所有關鍵字 (支援 A+B 複合格式)
+                    current_matched = []
+                    for k in self.keywords:
+                        # 支援以 + 號連接的複合關鍵字，需同時滿足標題內包含所有子詞
+                        sub_kws = k.split('+')
+                        if all(sk in title for sk in sub_kws):
+                            current_matched.append(k)
+                    
+                    if current_matched:
                         # 1. 標題正規化用於去重
                         # 去除 Google News 結尾的來源 (e.g. " - Yahoo奇摩股市")
                         clean_title = title.rsplit(' - ', 1)[0].strip()
@@ -280,7 +288,7 @@ class NewsCrawler:
                             'datetime_str': formatted_time,
                             'title': title,
                             'link': link,
-                            'tags': [kw],
+                            'tags': current_matched,
                             'priority': priority
                         }
 
@@ -288,9 +296,8 @@ class NewsCrawler:
                             title_dict[clean_title] = item_data
                         else:
                             existing = title_dict[clean_title]
-                            # 合併標籤
-                            if kw not in existing['tags']:
-                                existing['tags'].append(kw)
+                            # 合併並去重標籤
+                            existing['tags'] = list(set(existing['tags'] + current_matched))
                             
                             # 檢查是否需要替換為更優先的來源
                             # 優先級數字越小越優先 (1 > 2)
@@ -308,6 +315,7 @@ class NewsCrawler:
                 
         # 轉換回 list 並排序
         unique_news = list(title_dict.values())
-        unique_news.sort(key=lambda x: x['datetime_obj'], reverse=True)
+        # 排序：優先比對標籤數量 (符合越多關鍵字越前面)，其次按發布時間
+        unique_news.sort(key=lambda x: (len(x['tags']), x['datetime_obj']), reverse=True)
         
         return unique_news[:15]
