@@ -3,8 +3,8 @@
         "bot_token": "8707765736:AAE3CFdbWx8HObVKTHgpsILIhDRV2eezSVg",
         "chat_id": "7523076072"
     },
-    "mops_keywords": {},
-    "news_keywords": {
-        "台積電+電源龍頭": true
-    }
+    "mops_keywords": {
+        "晶碩+財務報告": true
+    },
+    "news_keywords": {}
 }

@@ -104,11 +104,13 @@ with st.sidebar:
                 st.rerun()
                 
         new_mops = st.text_input("新增重大訊息關鍵字")
-        if st.button("新增", key="add_mops"):
+        col_m1, col_m2 = st.columns([0.4, 0.6])
+        if col_m1.button("新增", key="add_mops"):
             if new_mops and new_mops not in st.session_state['config']['mops_keywords']:
                 st.session_state['config']['mops_keywords'][new_mops] = True
                 save_config(st.session_state['config'])
                 st.rerun()
+        col_m2.caption("💡 使用 `+` 號可進行複合搜尋")
 
     # News Keywords
     with st.expander("新聞關鍵字"):
@@ -170,6 +172,9 @@ with col2:
 
 # 撈取資料庫內容
 all_active_events = db.get_active_events()
+# 排序：優先比對標籤數量 (符合越多關鍵字越前面)，其次按日期
+all_active_events.sort(key=lambda x: (len(x['tags'].split(',')) if x['tags'] else 0, x['datetime_str']), reverse=True)
+
 mops_events = [e for e in all_active_events if e['type'] == '重大訊息']
 news_events = [e for e in all_active_events if e['type'] == '新聞']
 

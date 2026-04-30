@@ -187,8 +187,8 @@ class MopsCrawler:
                     if dt_obj < two_days_ago:
                         continue
                     
-                    # 檢查關鍵字 (同時搜尋主旨與公司名稱)
-                    matched_tags = [kw for kw in self.keywords if kw in title or kw in co_name]
+                    # 檢查關鍵字 (同時搜尋主旨與公司名稱，支援 A+B 格式)
+                    matched_tags = [kw for kw in self.keywords if all(sk in title or sk in co_name for sk in kw.split('+'))]
                     if matched_tags:
                         event_id = hashlib.md5(f"mops_{co_id}_{date_str}_{time_str}_{title}".encode('utf-8')).hexdigest()
                         formatted_time = dt_obj.strftime("%Y/%m/%d %H:%M")
