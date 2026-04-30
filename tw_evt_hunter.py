@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from bs4 import BeautifulSoup
 import urllib.parse
 import hashlib
+import re
 from email.utils import parsedate_to_datetime
 
 # Configure logging
@@ -221,11 +222,18 @@ class NewsCrawler:
         self.site_query = "(site:tw.news.yahoo.com OR site:tw.stock.yahoo.com OR site:cnyes.com OR site:money.udn.com OR site:ctee.com.tw OR site:chinatimes.com OR site:ltn.com.tw OR site:wantgoo.com OR site:cmoney.tw)"
 
     def fetch_news(self):
-        all_news = []
-        # 近二日
         two_days_ago = datetime.now() - timedelta(days=2)
         
-        news_dict = {}
+        # 標題去重池：{ normalized_title: news_item_dict }
+        title_dict = {}
+
+        def get_priority(url):
+            # 優先級：1 (原始媒體), 2 (轉載/聚合)
+            original_sites = ['cnyes.com', 'money.udn.com', 'ctee.com.tw', 'chinatimes.com', 'ltn.com.tw']
+            for site in original_sites:
+                if site in url: return 1
+            return 2
+
         for kw in self.keywords:
             try:
                 # 使用 Google News RSS 搜尋
@@ -233,7 +241,7 @@ class NewsCrawler:
                 encoded_query = urllib.parse.quote(query)
                 rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"
                 
-                time.sleep(random.uniform(2.0, 4.0))
+                time.sleep(random.uniform(1.5, 3.0)) # 稍微加快一點點
                 response = requests.get(rss_url, headers=self.headers, timeout=15)
                 soup = BeautifulSoup(response.content, 'xml')
                 
@@ -243,49 +251,63 @@ class NewsCrawler:
                     link = item.link.text if item.link else ""
                     pubDate_str = item.pubDate.text if item.pubDate else ""
                     
-                    dt_obj = datetime.now()
-                    # 檢查日期是否在三天內
+                    dt_obj_naive = datetime.now()
                     try:
                         dt_obj = parsedate_to_datetime(pubDate_str)
-                        # 轉換為台灣時間 (UTC+8)
                         dt_obj_tw = dt_obj.astimezone(timezone(timedelta(hours=8)))
                         dt_obj_naive = dt_obj_tw.replace(tzinfo=None)
                         if dt_obj_naive < two_days_ago:
-                            continue # 太舊的新聞跳過
-
-                    except Exception as e:
-                        logger.warning(f"無法解析新聞日期: {pubDate_str}")
-                        dt_obj_naive = dt_obj
-                        pass # 若解析失敗，保守起見先保留
+                            continue
+                    except Exception:
+                        pass
                     
-                    # 雙重確認標題是否包含關鍵字
                     if kw in title:
-                        news_id = hashlib.md5(f"news_{link}".encode('utf-8')).hexdigest()
+                        # 1. 標題正規化用於去重
+                        # 去除 Google News 結尾的來源 (e.g. " - Yahoo奇摩股市")
+                        clean_title = title.rsplit(' - ', 1)[0].strip()
+                        # 去除標題中常見的括號內容 (e.g. [速報], 【公告】, (2330))
+                        clean_title = re.sub(r'[\[【\(（].*?[\]】\)）]', '', clean_title).strip()
                         
-                        if link in news_dict:
-                            if kw not in news_dict[link]['tags']:
-                                news_dict[link]['tags'].append(kw)
+                        priority = get_priority(link)
+                        news_id = hashlib.md5(f"news_{link}".encode('utf-8')).hexdigest()
+                        formatted_time = dt_obj_naive.strftime("%Y/%m/%d %H:%M")
+                        
+                        item_data = {
+                            'id': news_id,
+                            'source': '財經新聞',
+                            'type': '新聞',
+                            'datetime_obj': dt_obj_naive,
+                            'datetime_str': formatted_time,
+                            'title': title,
+                            'link': link,
+                            'tags': [kw],
+                            'priority': priority
+                        }
+
+                        if clean_title not in title_dict:
+                            title_dict[clean_title] = item_data
                         else:
-                            formatted_time = dt_obj_naive.strftime("%Y/%m/%d %H:%M")
-                            news_dict[link] = {
-                                'id': news_id,
-                                'source': '財經新聞',
-                                'type': '新聞',
-                                'datetime_obj': dt_obj_naive,
-                                'datetime_str': formatted_time,
-                                'title': title,
-                                'link': link,
-                                'tags': [kw]
-                            }
+                            existing = title_dict[clean_title]
+                            # 合併標籤
+                            if kw not in existing['tags']:
+                                existing['tags'].append(kw)
+                            
+                            # 檢查是否需要替換為更優先的來源
+                            # 優先級數字越小越優先 (1 > 2)
+                            if priority < existing['priority']:
+                                item_data['tags'] = list(set(item_data['tags'] + existing['tags']))
+                                title_dict[clean_title] = item_data
+                            elif priority == existing['priority']:
+                                # 同優先級，保留發布時間較早的 (通常是原始報導)
+                                if dt_obj_naive < existing['datetime_obj']:
+                                    item_data['tags'] = list(set(item_data['tags'] + existing['tags']))
+                                    title_dict[clean_title] = item_data
                         
             except Exception as e:
                 logger.error(f"新聞爬取失敗 (關鍵字={kw}): {e}")
                 
-        # 轉換回 list
-        unique_news = list(news_dict.values())
-        
-        # 依照時間由新到舊排序
+        # 轉換回 list 並排序
+        unique_news = list(title_dict.values())
         unique_news.sort(key=lambda x: x['datetime_obj'], reverse=True)
         
-        # 只取最新的 10 則
-        return unique_news[:10]
+        return unique_news[:15]
