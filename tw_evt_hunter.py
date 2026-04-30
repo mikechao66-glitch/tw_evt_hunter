@@ -33,9 +33,21 @@ class EventDatabase:
                     link TEXT,
                     tags TEXT,
                     deleted INTEGER DEFAULT 0,
-                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    co_id TEXT,
+                    co_name TEXT
                 )
             ''')
+            # 確保欄位存在 (針對舊資料庫升級)
+            try:
+                cursor.execute('ALTER TABLE events ADD COLUMN co_id TEXT')
+            except sqlite3.OperationalError:
+                pass
+            try:
+                cursor.execute('ALTER TABLE events ADD COLUMN co_name TEXT')
+            except sqlite3.OperationalError:
+                pass
+
             # 檢查並遷移舊版 sent_events 的資料，標記為已刪除以避免再次推播
             try:
                 cursor.execute('INSERT OR IGNORE INTO events (id, title, source, deleted) SELECT id, title, source, 1 FROM sent_events')
@@ -54,8 +66,8 @@ class EventDatabase:
             cursor = conn.cursor()
             cursor.execute('''
                 INSERT OR IGNORE INTO events 
-                (id, title, source, type, datetime_str, link, tags, deleted)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+                (id, title, source, type, datetime_str, link, tags, deleted, co_id, co_name)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
             ''', (
                 event_dict['id'], 
                 event_dict['title'], 
@@ -63,7 +75,9 @@ class EventDatabase:
                 event_dict['type'],
                 event_dict['datetime_str'],
                 event_dict.get('link', ''),
-                ','.join(event_dict.get('tags', []))
+                ','.join(event_dict.get('tags', [])),
+                event_dict.get('co_id', ''),
+                event_dict.get('co_name', '')
             ))
             conn.commit()
 

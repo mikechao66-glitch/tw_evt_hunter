@@ -4,11 +4,10 @@
         "chat_id": "7523076072"
     },
     "mops_keywords": {
-        "自結": true,
-        "強盛新": true
+        "發言人": true
     },
     "news_keywords": {
-        "宜鼎": false,
-        "旺宏": false
+        "威盛": true,
+        "AI伺服器": true
     }
 }

@@ -41,29 +41,34 @@ def display_event(evt):
     tags_html = " ".join([f"<span style='background-color:#E1F5FE;color:#0277BD;padding:2px 6px;border-radius:4px;font-size:12px;margin-right:4px;'>#{t}</span>" for t in evt['tags'].split(",") if t])
     title_label = "公告主旨" if evt['type'] == '重大訊息' else "新聞標題"
     
-    html = f"""
-    <div style='border:1px solid #ddd; padding:15px; border-radius:8px; margin-bottom:10px; background-color:#fff; color:#333;'>
-        <div style='font-size:16px; font-weight:bold; margin-bottom:5px;'>
-            {title_label}：{evt['title']}
-        </div>
-        <div style='font-size:12px; color:#888; margin-bottom:8px;'>
-            發佈時間：{evt['datetime_str']}
-        </div>
-        <div style='margin-bottom:10px;'>
-            {tags_html}
-        </div>
-        <div>
-            <a href="{evt['link']}" target="_blank" style='color:#1976D2; text-decoration:none; font-size:14px;'>🔗 前往連結</a>
-        </div>
-    </div>
-    """
+    # 組合公司資訊 (針對重大訊息顯示代號與名稱)
+    co_info_html = ""
+    if evt.get('co_id') and evt.get('co_name'):
+        co_info_html = f"<div style='font-size:13px; color:#666; margin-bottom:5px;'>🏢 {evt['co_id']} {evt['co_name']}</div>"
+    
+    # 使用不帶縮排的 HTML 字串，避免 Markdown 將其誤判為程式碼區塊
+    html = f"""<div style='border:1px solid #ddd; padding:15px; border-radius:8px; margin-bottom:10px; background-color:#fff; color:#333;'>
+{co_info_html}
+<div style='font-size:16px; font-weight:bold; margin-bottom:5px;'>
+{title_label}：{evt['title']}
+</div>
+<div style='font-size:12px; color:#888; margin-bottom:8px;'>
+發佈時間：{evt['datetime_str']}
+</div>
+<div style='margin-bottom:10px;'>
+{tags_html}
+</div>
+<div>
+<a href="{evt['link']}" target="_blank" style='color:#1976D2; text-decoration:none; font-size:14px;'>🔗 前往連結</a>
+</div>
+</div>"""
     st.markdown(html, unsafe_allow_html=True)
 
 # -----------------
 # 側邊欄 (Sidebar)
 # -----------------
 with st.sidebar:
-    st.title("🔔 訂閱推播")
+    st.subheader("🔔 訂閱推播")
     
     with st.form("subscription_form", clear_on_submit=True, border=False):
         bot_token = st.text_input("Telegram Bot Token", type="password")
@@ -80,7 +85,7 @@ with st.sidebar:
     
     st.divider()
     
-    st.title("🔑 關鍵字設定")
+    st.subheader("🔑 關鍵字設定")
     
     # MOPS Keywords
     with st.expander("重大訊息關鍵字"):
