@@ -133,82 +133,95 @@ class MopsCrawler:
         }
 
     def fetch_today_events(self):
-        all_events = []
-        # 計算近二日的日期範圍供過濾
+        # 使用字典以 event_id 為鍵進行去重，避免當日與前一日有重複資料
+        events_dict = {}
         two_days_ago = datetime.now() - timedelta(days=2)
         
+        # 爬取清單：(頁面網址, AJAX網址, 標籤)
+        targets = [
+            (self.page_url, self.ajax_url, "當日"),
+            ("https://mopsov.twse.com.tw/mops/web/t05st02", "https://mopsov.twse.com.tw/mops/web/ajax_t05st02", "前一日")
+        ]
+
         try:
-            # 建立 Session ，先 GET 頁面取得 Cookie
             session = requests.Session()
             session.headers.update(self.headers)
-            session.get(self.page_url, timeout=15)
-            time.sleep(random.uniform(1.0, 2.0))
-            
-            # 用正確參數 POST （TYPEK=all, step=0）取得全市場即時重大訊息
-            response = session.post(
-                self.ajax_url,
-                data={'TYPEK': 'all', 'step': '0'},
-                headers={'Referer': self.page_url},
-                timeout=15
-            )
-            soup = BeautifulSoup(response.content, 'html.parser')
-            
-            tables = soup.find_all('table')
-            if not tables:
-                logger.warning("MOPS: 未找到表格資料")
-                return []
 
-            # 找包含重大訊息資料的最大表格
-            main_table = max(tables, key=lambda t: len(t.find_all('tr')))
-            rows = main_table.find_all('tr')
-            
-            for row in rows[1:]:  # 跳過表頭
-                cols = row.find_all('td')
-                if len(cols) >= 5:
-                    co_id    = cols[0].get_text(strip=True)
-                    co_name  = cols[1].get_text(strip=True)
-                    date_str = cols[2].get_text(strip=True)  # 民國年 e.g. 115/04/30
-                    time_str = cols[3].get_text(strip=True)
-                    title    = cols[4].get_text(strip=True)
+            for p_url, a_url, label in targets:
+                try:
+                    logger.info(f"正在爬取 MOPS {label}重大訊息...")
+                    session.get(p_url, timeout=15)
+                    time.sleep(random.uniform(1.0, 2.0))
                     
-                    # 跳過空白或非法資料
-                    if not co_id or not title or not date_str:
+                    response = session.post(
+                        a_url,
+                        data={'TYPEK': 'all', 'step': '0'},
+                        headers={'Referer': p_url},
+                        timeout=15
+                    )
+                    soup = BeautifulSoup(response.content, 'html.parser')
+                    
+                    tables = soup.find_all('table')
+                    if not tables:
                         continue
+
+                    # 找包含重大訊息資料的最大表格
+                    main_table = max(tables, key=lambda t: len(t.find_all('tr')))
+                    rows = main_table.find_all('tr')
                     
-                    # 轉換民國年為西元年
-                    try:
-                        year, month, day = date_str.split('/')
-                        west_year = int(year) + 1911
-                        dt_obj = datetime.strptime(f"{west_year}/{month}/{day} {time_str}", "%Y/%m/%d %H:%M:%S")
-                    except Exception:
-                        dt_obj = datetime.now()
-                    
-                    # 过濾超過二日的訊息
-                    if dt_obj < two_days_ago:
-                        continue
-                    
-                    # 檢查關鍵字 (同時搜尋主旨與公司名稱，支援 A+B 格式)
-                    matched_tags = [kw for kw in self.keywords if all(sk in title or sk in co_name for sk in kw.split('+'))]
-                    if matched_tags:
-                        event_id = hashlib.md5(f"mops_{co_id}_{date_str}_{time_str}_{title}".encode('utf-8')).hexdigest()
-                        formatted_time = dt_obj.strftime("%Y/%m/%d %H:%M")
-                        
-                        all_events.append({
-                            'id': event_id,
-                            'source': '公開資訊觀測站',
-                            'type': '重大訊息',
-                            'co_id': co_id,
-                            'co_name': co_name,
-                            'datetime_obj': dt_obj,
-                            'datetime_str': formatted_time,
-                            'title': title,
-                            'link': self.page_url,
-                            'tags': matched_tags
-                        })
+                    for row in rows[1:]:  # 跳過表頭
+                        cols = row.find_all('td')
+                        if len(cols) >= 5:
+                            co_id    = cols[0].get_text(strip=True)
+                            co_name  = cols[1].get_text(strip=True)
+                            date_str = cols[2].get_text(strip=True)
+                            time_str = cols[3].get_text(strip=True)
+                            title    = cols[4].get_text(strip=True)
+                            
+                            if not co_id or not title or not date_str:
+                                continue
+                            
+                            try:
+                                year, month, day = date_str.split('/')
+                                west_year = int(year) + 1911
+                                dt_obj = datetime.strptime(f"{west_year}/{month}/{day} {time_str}", "%Y/%m/%d %H:%M:%S")
+                            except Exception:
+                                dt_obj = datetime.now()
+                            
+                            if dt_obj < two_days_ago:
+                                continue
+                            
+                            matched_tags = [kw for kw in self.keywords if all(sk in title or sk in co_name for sk in kw.split('+'))]
+                            if matched_tags:
+                                event_id = hashlib.md5(f"mops_{co_id}_{date_str}_{time_str}_{title}".encode('utf-8')).hexdigest()
+                                
+                                if event_id not in events_dict:
+                                    formatted_time = dt_obj.strftime("%Y/%m/%d %H:%M")
+                                    events_dict[event_id] = {
+                                        'id': event_id,
+                                        'source': '公開資訊觀測站',
+                                        'type': '重大訊息',
+                                        'co_id': co_id,
+                                        'co_name': co_name,
+                                        'datetime_obj': dt_obj,
+                                        'datetime_str': formatted_time,
+                                        'title': title,
+                                        'link': p_url,
+                                        'tags': matched_tags
+                                    }
+                                else:
+                                    # 如果已存在，合併標籤
+                                    existing_tags = events_dict[event_id]['tags']
+                                    events_dict[event_id]['tags'] = list(set(existing_tags + matched_tags))
+                                    
+                except Exception as inner_e:
+                    logger.error(f"MOPS {label}爬取失敗: {inner_e}")
+                    continue
                         
         except Exception as e:
-            logger.error(f"MOPS 爬取失敗: {e}")
+            logger.error(f"MOPS 爬蟲 Session 建立失敗: {e}")
         
+        all_events = list(events_dict.values())
         logger.info(f"MOPS 共抓取 {len(all_events)} 筆符合條件的重大訊息")
         return all_events
 

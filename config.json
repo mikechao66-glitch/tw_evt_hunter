@@ -4,7 +4,9 @@
         "chat_id": "7523076072"
     },
     "mops_keywords": {
-        "晶碩+財務報告": true
+        "晶碩": false,
+        "財務報告": false,
+        "台達電+董事會": true
     },
     "news_keywords": {}
 }
