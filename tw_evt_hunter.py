@@ -137,25 +137,47 @@ class MopsCrawler:
         events_dict = {}
         two_days_ago = datetime.now() - timedelta(days=2)
         
-        # 爬取清單：(頁面網址, AJAX網址, 標籤)
+        # 爬取清單：(頁面網址, AJAX網址, 標籤, 類型)
         targets = [
-            (self.page_url, self.ajax_url, "當日"),
-            ("https://mopsov.twse.com.tw/mops/web/t05st02", "https://mopsov.twse.com.tw/mops/web/ajax_t05st02", "前一日")
+            (self.page_url, self.ajax_url, "當日", "today"),
+            ("https://mopsov.twse.com.tw/mops/web/t05st02", "https://mopsov.twse.com.tw/mops/web/ajax_t05st02", "前一日", "prev")
         ]
+
+        # 計算昨日日期 (用於前一日查詢參數)
+        yesterday = datetime.now() - timedelta(days=1)
+        roc_year = yesterday.year - 1911
+        roc_month = yesterday.strftime("%m")
+        roc_day = yesterday.strftime("%d")
 
         try:
             session = requests.Session()
             session.headers.update(self.headers)
 
-            for p_url, a_url, label in targets:
+            for p_url, a_url, label, mode in targets:
                 try:
                     logger.info(f"正在爬取 MOPS {label}重大訊息...")
                     session.get(p_url, timeout=15)
                     time.sleep(random.uniform(1.0, 2.0))
                     
+                    # 根據頁面類型設定不同的 POST 參數
+                    if mode == "today":
+                        payload = {'TYPEK': 'all', 'step': '0'}
+                    else:
+                        payload = {
+                            'encodeURIComponent': '1',
+                            'step': '1', 
+                            'step00': '0',
+                            'firstin': '1', 
+                            'off': '1',
+                            'TYPEK': 'all', 
+                            'year': str(roc_year), 
+                            'month': roc_month, 
+                            'day': roc_day
+                        }
+
                     response = session.post(
                         a_url,
-                        data={'TYPEK': 'all', 'step': '0'},
+                        data=payload,
                         headers={'Referer': p_url},
                         timeout=15
                     )
@@ -172,19 +194,29 @@ class MopsCrawler:
                     for row in rows[1:]:  # 跳過表頭
                         cols = row.find_all('td')
                         if len(cols) >= 5:
-                            co_id    = cols[0].get_text(strip=True)
-                            co_name  = cols[1].get_text(strip=True)
-                            date_str = cols[2].get_text(strip=True)
-                            time_str = cols[3].get_text(strip=True)
-                            title    = cols[4].get_text(strip=True)
+                            # 根據頁面類型調整欄位讀取順序
+                            if mode == "today":
+                                co_id    = cols[0].get_text(strip=True)
+                                co_name  = cols[1].get_text(strip=True)
+                                date_str = cols[2].get_text(strip=True)
+                                time_str = cols[3].get_text(strip=True)
+                                title    = cols[4].get_text(strip=True)
+                            else:
+                                # 前一日 (t05st02) 頁面欄位順序不同
+                                date_str = cols[0].get_text(strip=True)
+                                time_str = cols[1].get_text(strip=True)
+                                co_id    = cols[2].get_text(strip=True)
+                                co_name  = cols[3].get_text(strip=True)
+                                title    = cols[4].get_text(strip=True)
                             
                             if not co_id or not title or not date_str:
                                 continue
                             
                             try:
-                                year, month, day = date_str.split('/')
-                                west_year = int(year) + 1911
-                                dt_obj = datetime.strptime(f"{west_year}/{month}/{day} {time_str}", "%Y/%m/%d %H:%M:%S")
+                                # 處理日期轉換
+                                year_part, month_part, day_part = date_str.split('/')
+                                west_year = int(year_part) + 1911
+                                dt_obj = datetime.strptime(f"{west_year}/{month_part}/{day_part} {time_str}", "%Y/%m/%d %H:%M:%S")
                             except Exception:
                                 dt_obj = datetime.now()
                             

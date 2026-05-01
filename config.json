@@ -6,7 +6,10 @@
     "mops_keywords": {
         "晶碩": false,
         "財務報告": false,
-        "台達電+董事會": true
+        "台達電+董事會": false,
+        "晶豪": false,
+        "皇將": true,
+        "立碁+財務報告": true
     },
     "news_keywords": {}
 }
