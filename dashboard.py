@@ -154,21 +154,43 @@ with st.sidebar:
 # -----------------
 st.header("台股事件獵人 監測看板")
 
+# 檢查自動更新是否觸發
+trigger_auto_scan = False
+if auto_update:
+    now_ts = time.time()
+    if 'last_auto_update_ts' not in st.session_state:
+        st.session_state['last_auto_update_ts'] = now_ts
+        trigger_auto_scan = True
+    else:
+        elapsed = now_ts - st.session_state['last_auto_update_ts']
+        if elapsed >= 1800:
+            st.session_state['last_auto_update_ts'] = now_ts
+            trigger_auto_scan = True
+else:
+    # 關閉自動更新時，清除紀錄
+    if 'last_auto_update_ts' in st.session_state:
+        del st.session_state['last_auto_update_ts']
+
 col1, col2 = st.columns(2)
 with col1:
-    if st.button("🚀 啟動全市場掃描", use_container_width=True):
-        with st.spinner("正在掃描全市場..."):
-            run_hunter()
-            st.session_state['last_update_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        st.success("掃描完成！")
-        # Do not rerun immediately so user sees the success message, but we might want to refresh DB data
-        st.rerun()
+    scan_clicked = st.button("🚀 啟動全市場掃描", use_container_width=True)
+    scan_msg_placeholder = st.empty()
 
 with col2:
     if st.button("🗑️ 刪除所有訊息", use_container_width=True):
         db.mark_all_deleted()
         st.success("已清空畫面！這些訊息未來不會再重複顯示或推播。")
         st.rerun()
+
+# 統一執行掃描的邏輯
+if scan_clicked or trigger_auto_scan:
+    with scan_msg_placeholder.container():
+        with st.spinner("正在掃描全市場..."):
+            run_hunter()
+            st.session_state['last_update_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        st.success("掃描完成！")
+        time.sleep(1.5)  # 讓使用者能看到完成訊息
+    st.rerun()
 
 # 撈取資料庫內容
 all_active_events = db.get_active_events()
@@ -196,31 +218,11 @@ with col_news:
     for evt in news_events:
         display_event(evt)
 
-# Auto update loop
-if auto_update:
-    # 使用時間戳記判斷是否該執行更新，避免因 UI 互動觸發 rerun 導致立即掃描
+# Auto update wait loop (維持定期重啟)
+if auto_update and not trigger_auto_scan:
     now_ts = time.time()
-    
-    if 'last_auto_update_ts' not in st.session_state:
-        st.session_state['last_auto_update_ts'] = now_ts
-        with st.spinner("自動掃描初始化中..."):
-            run_hunter()
-            st.session_state['last_update_time'] = datetime.fromtimestamp(now_ts).strftime("%Y-%m-%d %H:%M:%S")
-        st.rerun()
-        
     elapsed = now_ts - st.session_state['last_auto_update_ts']
-    if elapsed >= 1800:
-        st.session_state['last_auto_update_ts'] = now_ts
-        with st.spinner("定期自動更新中..."):
-            run_hunter()
-            st.session_state['last_update_time'] = datetime.fromtimestamp(now_ts).strftime("%Y-%m-%d %H:%M:%S")
-        st.rerun()
-    else:
-        # 剩餘等待時間
+    if elapsed < 1800:
         wait_seconds = 1800 - elapsed
         time.sleep(wait_seconds)
         st.rerun()
-else:
-    # 關閉自動更新時，清除紀錄
-    if 'last_auto_update_ts' in st.session_state:
-        del st.session_state['last_auto_update_ts']
