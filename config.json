@@ -12,8 +12,8 @@
     "news_keywords": {
         "聯電": false,
         "輝達": true,
-        "群聯": true,
-        "台積電": true,
-        "AI": true
+        "群聯": false,
+        "台積電": false,
+        "AI": false
     }
 }

@@ -99,6 +99,15 @@ class EventDatabase:
             cursor.execute('UPDATE events SET deleted = 1 WHERE deleted = 0')
             conn.commit()
 
+    def cleanup_old_events(self, days=2):
+        """清除超過指定天數的舊資料，避免資料庫無限膨脹"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            # 使用 SQLite 的 date 函數計算
+            cursor.execute(f"DELETE FROM events WHERE timestamp < datetime('now', '-{days} days')")
+            conn.commit()
+            logger.info(f"已清理超過 {days} 天的舊資料庫紀錄")
+
 class TelegramNotifier:
     def __init__(self, bot_token, chat_id):
         self.bot_token = bot_token
@@ -318,6 +327,8 @@ class NewsCrawler:
                         # 1. 標題正規化用於去重
                         # 去除 Google News 結尾的來源 (e.g. " - Yahoo奇摩股市")
                         clean_title = title.rsplit(' - ', 1)[0].strip()
+                        # 進一步去除標題中的分類標籤 (e.g. "| 國際焦點 | 國際" 或 "｜ 財經")
+                        clean_title = clean_title.split('|')[0].split('｜')[0].strip()
                         # 去除標題中常見的括號內容 (e.g. [速報], 【公告】, (2330))
                         clean_title = re.sub(r'[\[【\(（].*?[\]】\)）]', '', clean_title).strip()
                         

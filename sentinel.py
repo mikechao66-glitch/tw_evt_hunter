@@ -88,6 +88,9 @@ def run_hunter():
                 sent_count += 1
                 logger.info(f"已發送推播: {evt['title']}")
             
+    # 5. 清理舊資料 (超過 2 天)
+    db.cleanup_old_events(days=2)
+            
     logger.info(f"執行完畢，本次共發送 {sent_count} 則新訊息。")
 
 if __name__ == "__main__":
