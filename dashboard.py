@@ -108,6 +108,7 @@ with st.sidebar:
         if col_m1.button("新增", key="add_mops"):
             if new_mops and new_mops not in st.session_state['config']['mops_keywords']:
                 st.session_state['config']['mops_keywords'][new_mops] = True
+                st.session_state['last_keyword_added_ts'] = time.time()  # 記錄新增時間
                 save_config(st.session_state['config'])
                 st.rerun()
         col_m2.caption("💡 使用 `+` 號可進行複合搜尋")
@@ -133,6 +134,7 @@ with st.sidebar:
         if col_btn.button("新增", key="add_news"):
             if new_news and new_news not in st.session_state['config']['news_keywords']:
                 st.session_state['config']['news_keywords'][new_news] = True
+                st.session_state['last_keyword_added_ts'] = time.time()  # 記錄新增時間
                 save_config(st.session_state['config'])
                 st.rerun()
         col_note.caption("💡 使用 `+` 號可進行複合搜尋")
@@ -158,9 +160,21 @@ st.header("台股事件獵人 監測看板")
 trigger_auto_scan = False
 if auto_update:
     now_ts = time.time()
+    
+    # 檢查是否在新增關鍵字的 15 分鐘冷卻期內
+    is_in_cooldown = False
+    if 'last_keyword_added_ts' in st.session_state:
+        if now_ts - st.session_state['last_keyword_added_ts'] < 900:  # 900秒 = 15分鐘
+            is_in_cooldown = True
+
     if 'last_auto_update_ts' not in st.session_state:
-        st.session_state['last_auto_update_ts'] = now_ts
-        trigger_auto_scan = True
+        # 如果是第一次啟動，且不在冷卻期內，才觸發
+        if not is_in_cooldown:
+            st.session_state['last_auto_update_ts'] = now_ts
+            trigger_auto_scan = True
+        else:
+            # 在冷卻期內，只設定時間點但不觸發掃描
+            st.session_state['last_auto_update_ts'] = now_ts
     else:
         elapsed = now_ts - st.session_state['last_auto_update_ts']
         if elapsed >= 1800:
@@ -219,10 +233,10 @@ with col_news:
         display_event(evt)
 
 # Auto update wait loop (維持定期重啟)
+# 使用 60 秒短循環取代一次性長 sleep，避免 WebSocket 超時導致自動更新失效
 if auto_update and not trigger_auto_scan:
     now_ts = time.time()
     elapsed = now_ts - st.session_state['last_auto_update_ts']
     if elapsed < 1800:
-        wait_seconds = 1800 - elapsed
-        time.sleep(wait_seconds)
+        time.sleep(60)
         st.rerun()
