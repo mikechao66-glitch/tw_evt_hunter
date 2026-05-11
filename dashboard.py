@@ -240,3 +240,6 @@ if auto_update and not trigger_auto_scan:
     if elapsed < 1800:
         time.sleep(60)
         st.rerun()
+
+st.divider()
+st.markdown("<div style='text-align: center; color: #888; font-size: 13px;'>© 2026 Built by 趙志軒</div>", unsafe_allow_html=True)

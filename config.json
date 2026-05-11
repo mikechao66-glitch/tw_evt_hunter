@@ -4,14 +4,11 @@
         "chat_id": "7523076072"
     },
     "mops_keywords": {
-        "智基": false,
-        "華勝": true,
-        "類比科": true,
-        "瑞基": true
+        "撤仲案": true
     },
     "news_keywords": {
         "聯電": false,
-        "輝達": true,
+        "輝達": false,
         "群聯": false,
         "台積電": false,
         "AI": false
