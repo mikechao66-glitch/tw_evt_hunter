@@ -4,13 +4,9 @@
         "chat_id": "7523076072"
     },
     "mops_keywords": {
-        "撤仲案": true
+        "庫藏股": true
     },
     "news_keywords": {
-        "聯電": false,
-        "輝達": false,
-        "群聯": false,
-        "台積電": false,
-        "AI": false
+        "聯發科": true
     }
 }

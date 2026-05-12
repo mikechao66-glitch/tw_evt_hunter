@@ -10,25 +10,27 @@ st.set_page_config(page_title="台股事件獵人", layout="wide", page_icon="�
 
 # Configuration loading and saving
 CONFIG_FILE = "config.json"
+KEYWORDS_FILE = "keywords.json"
 
 def load_config():
+    # 預設結構
     config = {"telegram": {"bot_token": "", "chat_id": ""}, "mops_keywords": {}, "news_keywords": {}}
+    
+    # 1. 嘗試讀取私有的 config.json (包含 Token)
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-            loaded = json.load(f)
-            config.update(loaded)
-            
-    # 遷移舊版 list 格式到 dict 格式
-    if isinstance(config.get('mops_keywords'), list):
-        config['mops_keywords'] = {kw: True for kw in config['mops_keywords']}
-    if isinstance(config.get('news_keywords'), list):
-        config['news_keywords'] = {kw: True for kw in config['news_keywords']}
-        
-    return config
-
-def save_config(config):
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(config, f, indent=4, ensure_ascii=False)
+            try:
+                loaded = json.load(f)
+                config.update(loaded)
+            except:
+                pass
+                
+    # 2. 嘗試讀取公開的 keywords.json (覆蓋關鍵字)
+    if os.path.exists(KEYWORDS_FILE):
+        with open(KEYWORDS_FILE, "r", encoding="utf-8") as f:
+            try:
+                kws = json.load(f)
+                config['mops_keywords'] = kws.get('mops_keywords', {})\n                config['news_keywords'] = kws.get('news_keywords', {})\n            except:\n                pass\n\n    # 3. 嘗試從環境變數讀取 Token (雲端優先)\n    env_token = os.environ.get(\"TG_BOT_TOKEN\")\n    env_chat_id = os.environ.get(\"TG_CHAT_ID\")\n    if env_token: config['telegram']['bot_token'] = env_token\n    if env_chat_id: config['telegram']['chat_id'] = env_chat_id\n            \n    # 遷移舊版 list 格式\n    if isinstance(config.get('mops_keywords'), list):\n        config['mops_keywords'] = {kw: True for kw in config['mops_keywords']}\n    if isinstance(config.get('news_keywords'), list):\n        config['news_keywords'] = {kw: True for kw in config['news_keywords']}\n        \n    return config\n\ndef save_config(config):\n    # 分開儲存：Token 存 config.json (被排除)，關鍵字 存 keywords.json (公開)\n    # 儲存私有資訊\n    private_data = {\"telegram\": config['telegram']}\n    with open(CONFIG_FILE, \"w\", encoding=\"utf-8\") as f:\n        json.dump(private_data, f, indent=4, ensure_ascii=False)\n    \n    # 儲存公開關鍵字\n    public_keywords = {\n        \"mops_keywords\": config['mops_keywords'],\n        \"news_keywords\": config['news_keywords']\n    }\n    with open(KEYWORDS_FILE, \"w\", encoding=\"utf-8\") as f:\n        json.dump(public_keywords, f, indent=4, ensure_ascii=False)
 
 if 'config' not in st.session_state:
     st.session_state['config'] = load_config()
