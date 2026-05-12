@@ -10,20 +10,32 @@ logger = logging.getLogger(__name__)
 def load_config(config_path="config.json", keywords_path="keywords.json"):
     config = {"telegram": {"bot_token": "", "chat_id": ""}, "mops_keywords": {}, "news_keywords": {}}
     
-    # 1. 讀取 config.json (如果存在)
     if os.path.exists(config_path):
         try:
             with open(config_path, "r", encoding="utf-8") as f:
                 config.update(json.load(f))
         except Exception as e:
-            logger.warning(f"讀取 {config_path} 失敗 (可能不存在): {e}")
+            logger.warning(f"讀取 {config_path} 失敗: {e}")
 
-    # 2. 讀取 keywords.json (優先)
     if os.path.exists(keywords_path):
         try:
             with open(keywords_path, "r", encoding="utf-8") as f:
                 kws = json.load(f)
-                config['mops_keywords'] = kws.get('mops_keywords', {})\n                config['news_keywords'] = kws.get('news_keywords', {})\n        except Exception as e:\n            logger.warning(f\"讀取 {keywords_path} 失敗: {e}\")\n\n    # 3. 從環境變數讀取 (雲端 Secrets)\n    import os\n    env_token = os.environ.get(\"TG_BOT_TOKEN\")\n    env_chat_id = os.environ.get(\"TG_CHAT_ID\")\n    if env_token: config['telegram']['bot_token'] = env_token\n    if env_chat_id: config['telegram']['chat_id'] = env_chat_id\n\n    if not config['telegram']['bot_token']:\n        logger.error(\"找不到 Telegram Bot Token (請檢查 config.json 或環境變數)\")\n        return None\n        \n    return config
+                config['mops_keywords'] = kws.get('mops_keywords', {})
+                config['news_keywords'] = kws.get('news_keywords', {})
+        except Exception as e:
+            logger.warning(f"讀取 {keywords_path} 失敗: {e}")
+
+    env_token = os.environ.get("TG_BOT_TOKEN")
+    env_chat_id = os.environ.get("TG_CHAT_ID")
+    if env_token: config['telegram']['bot_token'] = env_token
+    if env_chat_id: config['telegram']['chat_id'] = env_chat_id
+
+    if not config['telegram']['bot_token']:
+        logger.error("找不到 Telegram Bot Token")
+        return None
+        
+    return config
 
 def run_hunter():
     logger.info("開始執行台股事件獵人...")
