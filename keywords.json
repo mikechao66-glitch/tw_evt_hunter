@@ -21,7 +21,7 @@
         "大訂單": true,
         "旺季": true,
         "產能滿載": true,
-        "遭調查": true,
+        "遭調查": false,
         "遭處分": true,
         "造假": true,
         "掏空": true,
