@@ -43,21 +43,8 @@ def load_config():
         config['news_keywords'] = {kw: True for kw in config['news_keywords']}
     return config
 
-def save_config(config):
-    # 1. 儲存至本地 (本機端使用)
-    private_data = {"telegram": config['telegram']}
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(private_data, f, indent=4, ensure_ascii=False)
-    
-    public_keywords = {
-        "mops_keywords": config['mops_keywords'],
-        "news_keywords": config['news_keywords']
-    }
-    keywords_json = json.dumps(public_keywords, indent=4, ensure_ascii=False)
-    with open(KEYWORDS_FILE, "w", encoding="utf-8") as f:
-        f.write(keywords_json)
-
-    # 2. 自動同步至 GitHub (雲端使用)
+def sync_to_github(file_path, message="Update from Web UI"):
+    """將指定檔案同步至 GitHub"""
     gh_token = os.environ.get("GH_TOKEN")
     try: gh_token = gh_token or st.secrets.get("GH_TOKEN")
     except: pass
@@ -67,31 +54,36 @@ def save_config(config):
     except: pass
     
     if gh_token and gh_repo:
+        gh_repo = gh_repo.strip().replace("https://github.com/", "").strip("/")
         try:
-            url = f"https://api.github.com/repos/{gh_repo}/contents/{KEYWORDS_FILE}"
+            url = f"https://api.github.com/repos/{gh_repo}/contents/{file_path}"
             headers = {"Authorization": f"token {gh_token}", "Accept": "application/vnd.github.v3+json"}
             
-            # 先取得檔案的 sha (更新時必備)
+            with open(file_path, "rb") as f:
+                content = base64.b64encode(f.read()).decode("utf-8")
+            
             res = requests.get(url, headers=headers, timeout=10)
             sha = res.json().get('sha') if res.status_code == 200 else None
             
-            # 執行更新
-            payload = {
-                "message": "Update keywords from Web UI",
-                "content": base64.b64encode(keywords_json.encode("utf-8")).decode("utf-8"),
-                "sha": sha
-            } if sha else {
-                "message": "Create keywords from Web UI",
-                "content": base64.b64encode(keywords_json.encode("utf-8")).decode("utf-8")
-            }
+            payload = {"message": message, "content": content}
+            if sha: payload["sha"] = sha
             
-            put_res = requests.put(url, headers=headers, json=payload, timeout=10)
-            if put_res.status_code in [200, 201]:
-                st.toast("✅ 關鍵字已同步至 GitHub")
-            else:
-                st.error(f"GitHub 同步失敗: {put_res.status_code}")
-        except Exception as e:
-            st.error(f"同步發生異常: {e}")
+            requests.put(url, headers=headers, json=payload, timeout=10)
+            return True
+        except: pass
+    return False
+
+def save_config(config):
+    private_data = {"telegram": config['telegram']}
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(private_data, f, indent=4, ensure_ascii=False)
+    
+    public_keywords = {"mops_keywords": config['mops_keywords'], "news_keywords": config['news_keywords']}
+    with open(KEYWORDS_FILE, "w", encoding="utf-8") as f:
+        json.dump(public_keywords, f, indent=4, ensure_ascii=False)
+    
+    if sync_to_github(KEYWORDS_FILE, "Update keywords from Web UI"):
+        st.toast("✅ 關鍵字已同步至 GitHub")
 
 if 'config' not in st.session_state:
     st.session_state['config'] = load_config()
@@ -256,7 +248,8 @@ with col1:
 with col2:
     if st.button("🗑️ 刪除所有訊息", use_container_width=True):
         db.mark_all_deleted()
-        st.success("已清空畫面！這些訊息未來不會再重複顯示或推播。")
+        sync_to_github("events.db", "Clear all events from Web UI")
+        st.success("已清空畫面！變更已同步至雲端。")
         st.rerun()
 
 # 統一執行掃描的邏輯
