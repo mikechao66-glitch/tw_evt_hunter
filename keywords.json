@@ -11,7 +11,8 @@
         "停工": true,
         "庫藏股": true,
         "會計師": true,
-        "損失": true
+        "損失": true,
+        "財務主管": true
     },
     "news_keywords": {
         "超乎預期": true,
