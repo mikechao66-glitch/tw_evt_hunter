@@ -24,7 +24,8 @@
         "造假": true,
         "掏空": true,
         "驚爆": true,
-        "大利多": true,
-        "大利空": false
+        "大利多": false,
+        "大利空": false,
+        "大爆發": true
     }
 }
