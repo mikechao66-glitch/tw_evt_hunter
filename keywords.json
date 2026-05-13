@@ -11,7 +11,7 @@
         "停工": false,
         "庫藏股": false,
         "會計師": true,
-        "損失": true,
+        "損失": false,
         "財務主管": false,
         "分派股利": false,
         "競業禁止": false
