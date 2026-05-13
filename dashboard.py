@@ -2,6 +2,8 @@ import streamlit as st
 import json
 import time
 import os
+import base64
+import requests
 from datetime import datetime
 from tw_evt_hunter import EventDatabase
 from sentinel import run_hunter
@@ -42,6 +44,7 @@ def load_config():
     return config
 
 def save_config(config):
+    # 1. 儲存至本地 (本機端使用)
     private_data = {"telegram": config['telegram']}
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(private_data, f, indent=4, ensure_ascii=False)
@@ -50,8 +53,45 @@ def save_config(config):
         "mops_keywords": config['mops_keywords'],
         "news_keywords": config['news_keywords']
     }
+    keywords_json = json.dumps(public_keywords, indent=4, ensure_ascii=False)
     with open(KEYWORDS_FILE, "w", encoding="utf-8") as f:
-        json.dump(public_keywords, f, indent=4, ensure_ascii=False)
+        f.write(keywords_json)
+
+    # 2. 自動同步至 GitHub (雲端使用)
+    gh_token = os.environ.get("GH_TOKEN")
+    try: gh_token = gh_token or st.secrets.get("GH_TOKEN")
+    except: pass
+    
+    gh_repo = os.environ.get("GH_REPO")
+    try: gh_repo = gh_repo or st.secrets.get("GH_REPO")
+    except: pass
+    
+    if gh_token and gh_repo:
+        try:
+            url = f"https://api.github.com/repos/{gh_repo}/contents/{KEYWORDS_FILE}"
+            headers = {"Authorization": f"token {gh_token}", "Accept": "application/vnd.github.v3+json"}
+            
+            # 先取得檔案的 sha (更新時必備)
+            res = requests.get(url, headers=headers, timeout=10)
+            sha = res.json().get('sha') if res.status_code == 200 else None
+            
+            # 執行更新
+            payload = {
+                "message": "Update keywords from Web UI",
+                "content": base64.b64encode(keywords_json.encode("utf-8")).decode("utf-8"),
+                "sha": sha
+            } if sha else {
+                "message": "Create keywords from Web UI",
+                "content": base64.b64encode(keywords_json.encode("utf-8")).decode("utf-8")
+            }
+            
+            put_res = requests.put(url, headers=headers, json=payload, timeout=10)
+            if put_res.status_code in [200, 201]:
+                st.toast("✅ 關鍵字已同步至 GitHub")
+            else:
+                st.error(f"GitHub 同步失敗: {put_res.status_code}")
+        except Exception as e:
+            st.error(f"同步發生異常: {e}")
 
 if 'config' not in st.session_state:
     st.session_state['config'] = load_config()
