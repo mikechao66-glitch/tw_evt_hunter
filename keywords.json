@@ -2,7 +2,7 @@
     "mops_keywords": {
         "庫藏股": false,
         "法說會": true,
-        "股利分派": true
+        "股利分派": false
     },
     "news_keywords": {
         "聯發科": true,
