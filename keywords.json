@@ -2,7 +2,8 @@
     "mops_keywords": {
         "自結": true,
         "損益": true,
-        "營收": true
+        "營收": true,
+        "EPS": true
     },
     "news_keywords": {
         "超乎預期": true
