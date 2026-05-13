@@ -9,7 +9,8 @@
         "收購": true,
         "減資": true,
         "訴訟": true,
-        "停工": true
+        "停工": true,
+        "庫藏股": true
     },
     "news_keywords": {
         "超乎預期": true,
