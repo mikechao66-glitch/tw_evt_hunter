@@ -3,7 +3,8 @@
         "自結": true,
         "損益": true,
         "營收": true,
-        "EPS": true
+        "EPS": true,
+        "每股盈餘": true
     },
     "news_keywords": {
         "超乎預期": true
