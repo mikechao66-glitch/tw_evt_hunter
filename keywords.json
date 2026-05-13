@@ -4,7 +4,8 @@
         "損益": true,
         "營收": true,
         "EPS": true,
-        "每股盈餘": true
+        "每股盈餘": true,
+        "合併": true
     },
     "news_keywords": {
         "超乎預期": true
