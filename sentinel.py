@@ -61,26 +61,40 @@ def run_hunter():
     news_crawler = NewsCrawler(keywords=news_kws)
 
     all_events = []
+    status = {"mops_error": None, "news_error": None}
 
     # 1. 抓取 MOPS 重大訊息
     logger.info("開始抓取公開資訊觀測站重大訊息...")
-    mops_events = mops_crawler.fetch_today_events()
+    mops_events, mops_err = mops_crawler.fetch_today_events()
+    status["mops_error"] = mops_err
     logger.info(f"抓取到 {len(mops_events)} 筆相關重大訊息")
     all_events.extend(mops_events)
 
     # 2. 抓取新聞
     logger.info("開始抓取財經新聞...")
-    news_events = news_crawler.fetch_news()
+    news_events, news_err = news_crawler.fetch_news()
+    status["news_error"] = news_err
     logger.info(f"抓取到 {len(news_events)} 筆相關新聞")
     all_events.extend(news_events)
 
     # 3. 排序 (由新到舊: descending)
     all_events.sort(key=lambda x: x['datetime_obj'], reverse=True)
 
-    # 4. 存檔與發送推播
+    # 4. 存檔與發送推播 (每類最多抓 20 則新訊息)
     sent_count = 0
+    mops_new_count = 0
+    news_new_count = 0
+    
     for evt in all_events:
         if not db.is_sent(evt['id']):
+            # 檢查數量限制
+            if evt['type'] == '重大訊息':
+                if mops_new_count >= 20: continue
+                mops_new_count += 1
+            else:
+                if news_new_count >= 20: continue
+                news_new_count += 1
+                
             # 存入資料庫 (包含完整資訊與標籤)
             db.insert_event(evt)
             
@@ -114,6 +128,8 @@ def run_hunter():
     db.cleanup_old_events(days=2)
             
     logger.info(f"執行完畢，本次共發送 {sent_count} 則新訊息。")
+    status["sent_count"] = sent_count
+    return status
 
 if __name__ == "__main__":
     # 第一階段：可直接執行此檔案進行單次抓取與發送

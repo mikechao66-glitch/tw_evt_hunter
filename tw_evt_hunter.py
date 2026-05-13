@@ -142,11 +142,10 @@ class MopsCrawler:
         }
 
     def fetch_today_events(self):
-        # 使用字典以 event_id 為鍵進行去重，避免當日與前一日有重複資料
         events_dict = {}
         two_days_ago = datetime.now() - timedelta(days=2)
+        error_msg = None
         
-        # 爬取清單：(頁面網址, AJAX網址, 標籤, 類型)
         targets = [
             (self.page_url, self.ajax_url, "當日", "today"),
             ("https://mopsov.twse.com.tw/mops/web/t05st02", "https://mopsov.twse.com.tw/mops/web/ajax_t05st02", "前一日", "prev")
@@ -190,13 +189,19 @@ class MopsCrawler:
                         headers={'Referer': p_url},
                         timeout=15
                     )
+                    
+                    if response.status_code != 200:
+                        error_msg = f"連線失敗 ({response.status_code})，可能已被暫時封鎖 IP"
+                        continue
+
                     soup = BeautifulSoup(response.content, 'html.parser')
                     
                     tables = soup.find_all('table')
                     if not tables:
+                        if len(response.content) < 5000:
+                            error_msg = "偵測到存取受限，IP 可能已被封鎖"
                         continue
 
-                    # 找包含重大訊息資料的最大表格
                     main_table = max(tables, key=lambda t: len(t.find_all('tr')))
                     rows = main_table.find_all('tr')
                     
@@ -264,7 +269,7 @@ class MopsCrawler:
         
         all_events = list(events_dict.values())
         logger.info(f"MOPS 共抓取 {len(all_events)} 筆符合條件的重大訊息")
-        return all_events
+        return all_events, error_msg
 
 class NewsCrawler:
     def __init__(self, keywords):
@@ -277,8 +282,7 @@ class NewsCrawler:
 
     def fetch_news(self):
         two_days_ago = datetime.now() - timedelta(days=2)
-        
-        # 標題去重池：{ normalized_title: news_item_dict }
+        error_msg = None
         title_dict = {}
 
         def get_priority(url):
@@ -368,10 +372,10 @@ class NewsCrawler:
                         
             except Exception as e:
                 logger.error(f"新聞爬取失敗 (關鍵字={kw}): {e}")
+                if "403" in str(e) or "429" in str(e):
+                    error_msg = "新聞搜尋請求過於頻繁，可能已被暫時封鎖"
                 
-        # 轉換回 list 並排序
         unique_news = list(title_dict.values())
-        # 排序：優先比對標籤數量 (符合越多關鍵字越前面)，其次按發布時間
         unique_news.sort(key=lambda x: (len(x['tags']), x['datetime_obj']), reverse=True)
         
-        return unique_news[:15]
+        return unique_news, error_msg

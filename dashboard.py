@@ -256,10 +256,19 @@ with col2:
 if scan_clicked or trigger_auto_scan:
     with scan_msg_placeholder.container():
         with st.spinner("正在掃描全市場..."):
-            run_hunter()
+            status = run_hunter()
             st.session_state['last_update_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        st.success("掃描完成！")
-        time.sleep(1.5)  # 讓使用者能看到完成訊息
+        
+        # 顯示掃描結果與警告
+        if status.get("mops_error"):
+            st.error(f"重大訊息掃描異常: {status['mops_error']}")
+        if status.get("news_error"):
+            st.error(f"新聞搜尋異常: {status['news_error']}")
+            
+        if not status.get("mops_error") and not status.get("news_error"):
+            st.success(f"掃描完成！本次新增 {status.get('sent_count', 0)} 則訊息。")
+            
+        time.sleep(2.5)  # 增加停留時間讓使用者看清楚錯誤
     st.rerun()
 
 # 撈取資料庫內容
