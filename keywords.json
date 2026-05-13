@@ -14,7 +14,7 @@
         "損失": true,
         "財務主管": true,
         "分派股利": true,
-        "競業禁止": true
+        "競業禁止": false
     },
     "news_keywords": {
         "超乎預期": true,
