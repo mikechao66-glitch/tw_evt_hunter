@@ -1,7 +1,7 @@
 {
     "mops_keywords": {
-        "自結": true,
-        "損益": true,
+        "自結": false,
+        "損益": false,
         "營收": false,
         "EPS": false,
         "每股盈餘": false,
