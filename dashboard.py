@@ -73,6 +73,33 @@ def sync_to_github(file_path, message="Update from Web UI"):
         except: pass
     return False
 
+def pull_from_github(file_path):
+    """從 GitHub 下載指定檔案並覆蓋本地"""
+    gh_token = os.environ.get("GH_TOKEN")
+    try: gh_token = gh_token or st.secrets.get("GH_TOKEN")
+    except: pass
+    
+    gh_repo = os.environ.get("GH_REPO")
+    try: gh_repo = gh_repo or st.secrets.get("GH_REPO")
+    except: pass
+    
+    if gh_token and gh_repo:
+        gh_repo = gh_repo.strip().replace("https://github.com/", "").strip("/")
+        try:
+            url = f"https://api.github.com/repos/{gh_repo}/contents/{file_path}"
+            headers = {
+                "Authorization": f"token {gh_token}", 
+                "Accept": "application/vnd.github.v3.raw"
+            }
+            
+            res = requests.get(url, headers=headers, timeout=10)
+            if res.status_code == 200:
+                with open(file_path, "wb") as f:
+                    f.write(res.content)
+                return True
+        except: pass
+    return False
+
 def save_config(config):
     private_data = {"telegram": config['telegram']}
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
@@ -87,6 +114,15 @@ def save_config(config):
 
 if 'config' not in st.session_state:
     st.session_state['config'] = load_config()
+
+# 啟動時自動同步遠端資料庫與設定檔
+if 'initial_sync_done' not in st.session_state:
+    with st.spinner("正在同步雲端資料..."):
+        p1 = pull_from_github(KEYWORDS_FILE)
+        p2 = pull_from_github("events.db")
+        if p1 or p2:
+            st.session_state['config'] = load_config() # 重新讀取設定
+    st.session_state['initial_sync_done'] = True
 
 # Initialization
 db = EventDatabase()
@@ -137,6 +173,21 @@ with st.sidebar:
                 st.success("已完成儲存")
             
     st.caption("請輸入您的 Telegram Bot資訊。系統將於搜尋到符合之重大訊息及新聞時推送至您的行動裝置。")
+    
+    st.divider()
+
+    # 手動同步按鈕
+    if st.button("🔄 同步雲端資料", use_container_width=True):
+        with st.spinner("正在從 GitHub 下載最新資料..."):
+            p1 = pull_from_github(KEYWORDS_FILE)
+            p2 = pull_from_github("events.db")
+            if p1 or p2:
+                st.session_state['config'] = load_config()
+                st.success("同步完成！")
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.error("同步失敗，請檢查 GitHub Token 設定。")
     
     st.divider()
     
