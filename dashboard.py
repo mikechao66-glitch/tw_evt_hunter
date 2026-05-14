@@ -73,43 +73,6 @@ def sync_to_github(file_path, message="Update from Web UI"):
         except: pass
     return False
 
-def pull_db_from_github():
-    """從 GitHub 下載最新的 events.db 與 keywords.json（僅限雲端環境）"""
-    gh_token = os.environ.get("GH_TOKEN")
-    try: gh_token = gh_token or st.secrets.get("GH_TOKEN")
-    except: pass
-
-    gh_repo = os.environ.get("GH_REPO")
-    try: gh_repo = gh_repo or st.secrets.get("GH_REPO")
-    except: pass
-
-    if not gh_token or not gh_repo:
-        return False, "未設定 GitHub Token 或 Repo (本機執行中)"
-
-    gh_repo = gh_repo.strip().replace("https://github.com/", "").strip("/")
-    
-    success_count = 0
-    # 下載檔案列表
-    files_to_pull = ["events.db", "keywords.json"]
-    
-    for file_path in files_to_pull:
-        try:
-            # 優先嘗試從 raw.githubusercontent.com 下載 (支援大檔案)
-            raw_url = f"https://raw.githubusercontent.com/{gh_repo}/main/{file_path}"
-            headers = {"Authorization": f"token {gh_token}"}
-            res = requests.get(raw_url, headers=headers, timeout=20)
-            
-            if res.status_code == 200:
-                with open(file_path, 'wb') as f:
-                    f.write(res.content)
-                success_count += 1
-        except Exception as e:
-            pass
-            
-    if success_count > 0:
-        return True, f"已從 GitHub 同步 {success_count} 個檔案"
-    return False, "同步失敗，請檢查 GitHub Token 是否有權限或路徑正確"
-
 def save_config(config):
     private_data = {"telegram": config['telegram']}
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
@@ -125,13 +88,6 @@ def save_config(config):
 if 'config' not in st.session_state:
     st.session_state['config'] = load_config()
 
-# 每次頁面載入時從 GitHub 拉取最新資料庫（解決 Streamlit Cloud 資料不同步問題）
-sync_success, sync_msg = pull_db_from_github()
-if sync_success:
-    st.toast(f"✅ {sync_msg}")
-elif "本機" not in sync_msg:
-    st.sidebar.warning(f"⚠️ {sync_msg}")
-
 # Initialization
 db = EventDatabase()
 
@@ -143,9 +99,7 @@ def display_event(evt):
     # 組合公司資訊 (針對重大訊息顯示代號與名稱)
     co_info_html = ""
     if evt.get('co_id') and evt.get('co_name'):
-        co_info_html = f"<div style='color:#666;font-size:13px;margin-bottom:4px;'>🏢 {evt['co_id']} {evt['co_name']}</div>"
-    elif evt.get('co_name'):
-        co_info_html = f"<div style='color:#666;font-size:13px;margin-bottom:4px;'>🏢 {evt['co_name']}</div>"
+        co_info_html = f"<div style='font-size:13px; color:#666; margin-bottom:5px;'>🏢 {evt['co_id']} {evt['co_name']}</div>"
     
     # 使用不帶縮排的 HTML 字串，避免 Markdown 將其誤判為程式碼區塊
     html = f"""<div style='border:1px solid #ddd; padding:15px; border-radius:8px; margin-bottom:10px; background-color:#fff; color:#333;'>
@@ -305,21 +259,18 @@ if scan_clicked or trigger_auto_scan:
             status = run_hunter()
             st.session_state['last_update_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
-            if status is None:
-                st.error("⚠️ 掃描失敗：缺少 Telegram Bot Token 設定。請在側欄填入 Token 後再試，或確認 Streamlit Secrets 中已設定 TG_BOT_TOKEN。")
-            else:
-                # 如果掃描有新增訊息，立即同步回 GitHub 避免被排程覆蓋
-                if status.get("sent_count", 0) > 0:
-                    sync_to_github("events.db", "Update events from Web UI scan")
+            # 如果掃描有新增訊息，立即同步回 GitHub 避免被排程覆蓋
+            if status.get("sent_count", 0) > 0:
+                sync_to_github("events.db", "Update events from Web UI scan")
+        
+        # 顯示掃描結果與警告
+        if status.get("mops_error"):
+            st.error(f"重大訊息掃描異常: {status['mops_error']}")
+        if status.get("news_error"):
+            st.error(f"新聞搜尋異常: {status['news_error']}")
             
-                # 顯示掃描結果與警告
-                if status.get("mops_error"):
-                    st.error(f"重大訊息掃描異常: {status['mops_error']}")
-                if status.get("news_error"):
-                    st.error(f"新聞搜尋異常: {status['news_error']}")
-                    
-                if not status.get("mops_error") and not status.get("news_error"):
-                    st.success(f"掃描完成！共發現 {status.get('mops_found', 0)} 則相關重訊與 {status.get('news_found', 0)} 則相關新聞，其中新增 {status.get('sent_count', 0)} 則未讀訊息。")
+        if not status.get("mops_error") and not status.get("news_error"):
+            st.success(f"掃描完成！共發現 {status.get('mops_found', 0)} 則相關重訊與 {status.get('news_found', 0)} 則相關新聞，其中新增 {status.get('sent_count', 0)} 則未讀訊息。")
             
         time.sleep(2.5)  # 讓使用者看清楚結果
     st.rerun()

@@ -69,9 +69,8 @@ class EventDatabase:
     def insert_event(self, event_dict):
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            # 使用 REPLACE INTO 讓舊訊息如果匹配到新關鍵字時，能更新標籤並重新出現在清單中 (deleted 恢復為 0)
             cursor.execute('''
-                REPLACE INTO events 
+                INSERT OR IGNORE INTO events 
                 (id, title, source, type, datetime_str, link, tags, deleted, co_id, co_name)
                 VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
             ''', (
