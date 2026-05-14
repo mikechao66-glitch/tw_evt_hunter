@@ -67,6 +67,8 @@ def run_hunter():
     logger.info("開始抓取公開資訊觀測站重大訊息...")
     mops_events, mops_err = mops_crawler.fetch_today_events()
     status["mops_error"] = mops_err
+    if mops_err:
+        logger.error(f"MOPS 爬取異常: {mops_err}")
     logger.info(f"抓取到 {len(mops_events)} 筆相關重大訊息")
     all_events.extend(mops_events)
 
@@ -74,6 +76,8 @@ def run_hunter():
     logger.info("開始抓取財經新聞...")
     news_events, news_err = news_crawler.fetch_news()
     status["news_error"] = news_err
+    if news_err:
+        logger.error(f"新聞爬取異常: {news_err}")
     logger.info(f"抓取到 {len(news_events)} 筆相關新聞")
     all_events.extend(news_events)
 
@@ -129,6 +133,8 @@ def run_hunter():
             
     logger.info(f"執行完畢，本次共發送 {sent_count} 則新訊息。")
     status["sent_count"] = sent_count
+    status["mops_found"] = len(mops_events)
+    status["news_found"] = len(news_events)
     return status
 
 if __name__ == "__main__":

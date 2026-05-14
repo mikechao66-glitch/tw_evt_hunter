@@ -12,6 +12,10 @@ import hashlib
 import re
 from email.utils import parsedate_to_datetime
 
+# Helper to get Taiwan time consistently
+def get_tw_time():
+    return datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -143,7 +147,7 @@ class MopsCrawler:
 
     def fetch_today_events(self):
         events_dict = {}
-        two_days_ago = datetime.now() - timedelta(days=2)
+        two_days_ago = get_tw_time() - timedelta(days=2)
         error_msg = None
         
         targets = [
@@ -152,7 +156,7 @@ class MopsCrawler:
         ]
 
         # 計算昨日日期 (用於前一日查詢參數)
-        yesterday = datetime.now() - timedelta(days=1)
+        yesterday = get_tw_time() - timedelta(days=1)
         roc_year = yesterday.year - 1911
         roc_month = yesterday.strftime("%m")
         roc_day = yesterday.strftime("%d")
@@ -194,6 +198,11 @@ class MopsCrawler:
                         error_msg = f"連線失敗 ({response.status_code})，可能已被暫時封鎖 IP"
                         continue
 
+                    # 檢查是否被阻擋 (MOPS 阻擋時通常沒有 公司代號 欄位)
+                    if "公司代號" not in response.text and "查無" not in response.text and "無符合" not in response.text:
+                        error_msg = "偵測到存取受限，IP 可能已被封鎖或頁面格式錯誤"
+                        continue
+
                     soup = BeautifulSoup(response.content, 'html.parser')
                     
                     tables = soup.find_all('table')
@@ -232,7 +241,7 @@ class MopsCrawler:
                                 west_year = int(year_part) + 1911
                                 dt_obj = datetime.strptime(f"{west_year}/{month_part}/{day_part} {time_str}", "%Y/%m/%d %H:%M:%S")
                             except Exception:
-                                dt_obj = datetime.now()
+                                dt_obj = get_tw_time()
                             
                             if dt_obj < two_days_ago:
                                 continue
@@ -281,7 +290,7 @@ class NewsCrawler:
         self.site_query = "(site:cnyes.com OR site:money.udn.com OR site:ctee.com.tw OR site:chinatimes.com OR site:ltn.com.tw OR site:wantgoo.com OR site:cmoney.tw)"
 
     def fetch_news(self):
-        two_days_ago = datetime.now() - timedelta(days=2)
+        two_days_ago = get_tw_time() - timedelta(days=2)
         error_msg = None
         title_dict = {}
 
@@ -309,7 +318,7 @@ class NewsCrawler:
                     link = item.link.text if item.link else ""
                     pubDate_str = item.pubDate.text if item.pubDate else ""
                     
-                    dt_obj_naive = datetime.now()
+                    dt_obj_naive = get_tw_time()
                     try:
                         dt_obj = parsedate_to_datetime(pubDate_str)
                         dt_obj_tw = dt_obj.astimezone(timezone(timedelta(hours=8)))

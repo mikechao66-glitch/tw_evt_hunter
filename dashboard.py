@@ -270,7 +270,7 @@ if scan_clicked or trigger_auto_scan:
             st.error(f"新聞搜尋異常: {status['news_error']}")
             
         if not status.get("mops_error") and not status.get("news_error"):
-            st.success(f"掃描完成！本次新增 {status.get('sent_count', 0)} 則訊息。")
+            st.success(f"掃描完成！共發現 {status.get('mops_found', 0)} 則相關重訊與 {status.get('news_found', 0)} 則相關新聞，其中新增 {status.get('sent_count', 0)} 則未讀訊息。")
             
         time.sleep(2.5)  # 讓使用者看清楚結果
     st.rerun()
