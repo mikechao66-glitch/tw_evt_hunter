@@ -8,9 +8,9 @@
         "收購": true,
         "減資": true,
         "訴訟": true,
-        "停工": true,
-        "庫藏股": true,
-        "會計師": true,
+        "停工": false,
+        "庫藏股": false,
+        "會計師": false,
         "損失": false,
         "財務主管": false,
         "分派股利": false
