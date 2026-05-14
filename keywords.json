@@ -3,7 +3,7 @@
         "自結": true,
         "損益": true,
         "營收": true,
-        "EPS": false,
+        "EPS": true,
         "每股盈餘": false,
         "收購": false,
         "減資": false,
