@@ -288,18 +288,21 @@ if scan_clicked or trigger_auto_scan:
             status = run_hunter()
             st.session_state['last_update_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
-            # 如果掃描有新增訊息，立即同步回 GitHub 避免被排程覆蓋
-            if status.get("sent_count", 0) > 0:
-                sync_to_github("events.db", "Update events from Web UI scan")
-        
-        # 顯示掃描結果與警告
-        if status.get("mops_error"):
-            st.error(f"重大訊息掃描異常: {status['mops_error']}")
-        if status.get("news_error"):
-            st.error(f"新聞搜尋異常: {status['news_error']}")
+            if status is None:
+                st.error("⚠️ 掃描失敗：缺少 Telegram Bot Token 設定。請在側欄填入 Token 後再試，或確認 Streamlit Secrets 中已設定 TG_BOT_TOKEN。")
+            else:
+                # 如果掃描有新增訊息，立即同步回 GitHub 避免被排程覆蓋
+                if status.get("sent_count", 0) > 0:
+                    sync_to_github("events.db", "Update events from Web UI scan")
             
-        if not status.get("mops_error") and not status.get("news_error"):
-            st.success(f"掃描完成！共發現 {status.get('mops_found', 0)} 則相關重訊與 {status.get('news_found', 0)} 則相關新聞，其中新增 {status.get('sent_count', 0)} 則未讀訊息。")
+                # 顯示掃描結果與警告
+                if status.get("mops_error"):
+                    st.error(f"重大訊息掃描異常: {status['mops_error']}")
+                if status.get("news_error"):
+                    st.error(f"新聞搜尋異常: {status['news_error']}")
+                    
+                if not status.get("mops_error") and not status.get("news_error"):
+                    st.success(f"掃描完成！共發現 {status.get('mops_found', 0)} 則相關重訊與 {status.get('news_found', 0)} 則相關新聞，其中新增 {status.get('sent_count', 0)} 則未讀訊息。")
             
         time.sleep(2.5)  # 讓使用者看清楚結果
     st.rerun()
