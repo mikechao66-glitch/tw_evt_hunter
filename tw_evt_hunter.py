@@ -271,8 +271,6 @@ class MopsCrawler:
                                     
                 except Exception as inner_e:
                     logger.error(f"MOPS {label}爬取失敗: {inner_e}")
-                    if not error_msg:
-                        error_msg = f"連線異常，IP 可能已被封鎖 ({type(inner_e).__name__})"
                     continue
                         
         except Exception as e:
@@ -385,8 +383,6 @@ class NewsCrawler:
                 logger.error(f"新聞爬取失敗 (關鍵字={kw}): {e}")
                 if "403" in str(e) or "429" in str(e):
                     error_msg = "新聞搜尋請求過於頻繁，可能已被暫時封鎖"
-                elif not error_msg:
-                    error_msg = f"新聞搜尋連線異常 ({type(e).__name__})"
                 
         unique_news = list(title_dict.values())
         unique_news.sort(key=lambda x: (len(x['tags']), x['datetime_obj']), reverse=True)
