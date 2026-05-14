@@ -9,7 +9,7 @@
         "減資": true,
         "訴訟": false,
         "停工": false,
-        "庫藏股": false,
+        "庫藏股": true,
         "會計師": true,
         "損失": true,
         "財務主管": true,
