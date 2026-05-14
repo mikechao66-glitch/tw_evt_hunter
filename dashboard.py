@@ -73,6 +73,32 @@ def sync_to_github(file_path, message="Update from Web UI"):
         except: pass
     return False
 
+def pull_db_from_github():
+    """從 GitHub 下載最新的 events.db（僅限雲端環境，本機略過）"""
+    gh_token = os.environ.get("GH_TOKEN")
+    try: gh_token = gh_token or st.secrets.get("GH_TOKEN")
+    except: pass
+
+    gh_repo = os.environ.get("GH_REPO")
+    try: gh_repo = gh_repo or st.secrets.get("GH_REPO")
+    except: pass
+
+    if not gh_token or not gh_repo:
+        return  # 沒有設定 token 表示在本機環境，不需下載
+
+    gh_repo = gh_repo.strip().replace("https://github.com/", "").strip("/")
+    try:
+        url = f"https://api.github.com/repos/{gh_repo}/contents/events.db"
+        headers = {"Authorization": f"token {gh_token}", "Accept": "application/vnd.github.v3+json"}
+        res = requests.get(url, headers=headers, timeout=15)
+        if res.status_code == 200:
+            file_content = base64.b64decode(res.json().get('content', ''))
+            if file_content:
+                with open('events.db', 'wb') as f:
+                    f.write(file_content)
+    except Exception as e:
+        pass  # 靜默失敗，讓系統繼續使用本地資料庫
+
 def save_config(config):
     private_data = {"telegram": config['telegram']}
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
@@ -87,6 +113,9 @@ def save_config(config):
 
 if 'config' not in st.session_state:
     st.session_state['config'] = load_config()
+
+# 每次頁面載入時從 GitHub 拉取最新資料庫（解決 Streamlit Cloud 資料不同步問題）
+pull_db_from_github()
 
 # Initialization
 db = EventDatabase()
