@@ -11,8 +11,8 @@
         "停工": true,
         "庫藏股": true,
         "會計師": true,
-        "損失": true,
-        "財務主管": true,
+        "損失": false,
+        "財務主管": false,
         "分派股利": false
     },
     "news_keywords": {
