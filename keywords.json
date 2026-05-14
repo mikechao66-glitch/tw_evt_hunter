@@ -24,7 +24,7 @@
         "遭調查": true,
         "遭處分": true,
         "造假": true,
-        "掏空": true,
+        "掏空": false,
         "驚爆": false,
         "大利多": false,
         "大利空": false,
