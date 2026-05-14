@@ -258,6 +258,10 @@ if scan_clicked or trigger_auto_scan:
         with st.spinner("正在掃描全市場..."):
             status = run_hunter()
             st.session_state['last_update_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # 如果掃描有新增訊息，立即同步回 GitHub 避免被排程覆蓋
+            if status.get("sent_count", 0) > 0:
+                sync_to_github("events.db", "Update events from Web UI scan")
         
         # 顯示掃描結果與警告
         if status.get("mops_error"):
@@ -268,7 +272,7 @@ if scan_clicked or trigger_auto_scan:
         if not status.get("mops_error") and not status.get("news_error"):
             st.success(f"掃描完成！本次新增 {status.get('sent_count', 0)} 則訊息。")
             
-        time.sleep(2.5)  # 增加停留時間讓使用者看清楚錯誤
+        time.sleep(2.5)  # 讓使用者看清楚結果
     st.rerun()
 
 # 撈取資料庫內容
