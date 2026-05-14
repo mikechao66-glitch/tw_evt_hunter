@@ -15,7 +15,7 @@
         "財務主管": false,
         "分派股利": false,
         "獨立董事": false,
-        "董事會": true,
+        "董事會": false,
         "國泰人壽": false,
         "媒體報導": false
     },
