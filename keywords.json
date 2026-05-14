@@ -1,6 +1,6 @@
 {
     "mops_keywords": {
-        "自結": true,
+        "自結": false,
         "損益": false,
         "營收": false,
         "EPS": false,
@@ -13,7 +13,8 @@
         "會計師": false,
         "損失": false,
         "財務主管": false,
-        "分派股利": false
+        "分派股利": false,
+        "獨立董事": true
     },
     "news_keywords": {
         "超乎預期": true,
