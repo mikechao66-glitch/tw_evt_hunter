@@ -10,11 +10,11 @@
         "訴訟": false,
         "停工": false,
         "庫藏股": false,
-        "會計師": true,
-        "損失": true,
-        "財務主管": true,
-        "分派股利": true,
-        "競業禁止": true
+        "會計師": false,
+        "損失": false,
+        "財務主管": false,
+        "分派股利": false,
+        "競業禁止": false
     },
     "news_keywords": {
         "超乎預期": true,
