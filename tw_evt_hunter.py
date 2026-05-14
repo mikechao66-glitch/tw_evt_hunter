@@ -145,6 +145,7 @@ class MopsCrawler:
         events_dict = {}
         two_days_ago = datetime.now() - timedelta(days=2)
         error_msg = None
+        total_mops_rows = 0  # 追蹤實際掃到的資料列數，用於偵測 IP 封鎖
         
         targets = [
             (self.page_url, self.ajax_url, "當日", "today"),
@@ -204,8 +205,11 @@ class MopsCrawler:
 
                     main_table = max(tables, key=lambda t: len(t.find_all('tr')))
                     rows = main_table.find_all('tr')
+                    data_rows = [r for r in rows[1:] if len(r.find_all('td')) >= 5]
+                    total_mops_rows += len(data_rows)
+                    logger.info(f"MOPS {label} 共有 {len(data_rows)} 筆資料列")
                     
-                    for row in rows[1:]:  # 跳過表頭
+                    for row in data_rows:  # 跳過表頭，只處理有效資料列
                         cols = row.find_all('td')
                         if len(cols) >= 5:
                             # 根據頁面類型調整欄位讀取順序
@@ -267,8 +271,13 @@ class MopsCrawler:
         except Exception as e:
             logger.error(f"MOPS 爬蟲 Session 建立失敗: {e}")
         
+        # 若兩頁合計均為 0 筆資料列且無其他錯誤，判定為雲端 IP 被封鎖
+        if total_mops_rows == 0 and error_msg is None:
+            error_msg = "MOPS 回傳 0 筆公告資料（當日及前一日均為空），雲端平台 IP 可能已被封鎖，請改用本機執行掃描"
+            logger.warning(error_msg)
+
         all_events = list(events_dict.values())
-        logger.info(f"MOPS 共抓取 {len(all_events)} 筆符合條件的重大訊息")
+        logger.info(f"MOPS 共抓取 {len(all_events)} 筆符合條件的重大訊息（共掃描 {total_mops_rows} 筆公告列）")
         return all_events, error_msg
 
 class NewsCrawler:
