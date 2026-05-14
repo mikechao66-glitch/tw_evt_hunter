@@ -14,7 +14,7 @@
         "損失": false,
         "財務主管": false,
         "獨立董事": false,
-        "董事會": false,
+        "董事會": true,
         "股利": false
     },
     "news_keywords": {
@@ -29,6 +29,6 @@
         "驚爆": false,
         "大利多": false,
         "大利空": false,
-        "大爆發": true
+        "大爆發": false
     }
 }
