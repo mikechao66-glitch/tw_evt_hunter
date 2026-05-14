@@ -18,7 +18,7 @@
         "股利": false
     },
     "news_keywords": {
-        "超乎預期": false,
+        "超乎預期": true,
         "大訂單": false,
         "旺季": false,
         "產能滿載": false,
