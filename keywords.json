@@ -21,7 +21,7 @@
         "超乎預期": true,
         "大訂單": true,
         "旺季": false,
-        "產能滿載": false,
+        "產能滿載": true,
         "遭調查": false,
         "遭處分": false,
         "造假": false,
