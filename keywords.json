@@ -15,7 +15,7 @@
         "財務主管": false,
         "獨立董事": false,
         "董事會": false,
-        "股利": true
+        "股利": false
     },
     "news_keywords": {
         "超乎預期": false,
