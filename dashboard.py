@@ -74,7 +74,7 @@ def sync_to_github(file_path, message="Update from Web UI"):
     return False
 
 def pull_db_from_github():
-    """從 GitHub 下載最新的 events.db（僅限雲端環境，本機略過）"""
+    """從 GitHub 下載最新的 events.db 與 keywords.json（僅限雲端環境）"""
     gh_token = os.environ.get("GH_TOKEN")
     try: gh_token = gh_token or st.secrets.get("GH_TOKEN")
     except: pass
@@ -84,20 +84,31 @@ def pull_db_from_github():
     except: pass
 
     if not gh_token or not gh_repo:
-        return  # 沒有設定 token 表示在本機環境，不需下載
+        return False, "未設定 GitHub Token 或 Repo (本機執行中)"
 
     gh_repo = gh_repo.strip().replace("https://github.com/", "").strip("/")
-    try:
-        url = f"https://api.github.com/repos/{gh_repo}/contents/events.db"
-        headers = {"Authorization": f"token {gh_token}", "Accept": "application/vnd.github.v3+json"}
-        res = requests.get(url, headers=headers, timeout=15)
-        if res.status_code == 200:
-            file_content = base64.b64decode(res.json().get('content', ''))
-            if file_content:
-                with open('events.db', 'wb') as f:
-                    f.write(file_content)
-    except Exception as e:
-        pass  # 靜默失敗，讓系統繼續使用本地資料庫
+    
+    success_count = 0
+    # 下載檔案列表
+    files_to_pull = ["events.db", "keywords.json"]
+    
+    for file_path in files_to_pull:
+        try:
+            # 優先嘗試從 raw.githubusercontent.com 下載 (支援大檔案)
+            raw_url = f"https://raw.githubusercontent.com/{gh_repo}/main/{file_path}"
+            headers = {"Authorization": f"token {gh_token}"}
+            res = requests.get(raw_url, headers=headers, timeout=20)
+            
+            if res.status_code == 200:
+                with open(file_path, 'wb') as f:
+                    f.write(res.content)
+                success_count += 1
+        except Exception as e:
+            pass
+            
+    if success_count > 0:
+        return True, f"已從 GitHub 同步 {success_count} 個檔案"
+    return False, "同步失敗，請檢查 GitHub Token 是否有權限或路徑正確"
 
 def save_config(config):
     private_data = {"telegram": config['telegram']}
@@ -115,7 +126,11 @@ if 'config' not in st.session_state:
     st.session_state['config'] = load_config()
 
 # 每次頁面載入時從 GitHub 拉取最新資料庫（解決 Streamlit Cloud 資料不同步問題）
-pull_db_from_github()
+sync_success, sync_msg = pull_db_from_github()
+if sync_success:
+    st.toast(f"✅ {sync_msg}")
+elif "本機" not in sync_msg:
+    st.sidebar.warning(f"⚠️ {sync_msg}")
 
 # Initialization
 db = EventDatabase()
@@ -128,7 +143,9 @@ def display_event(evt):
     # 組合公司資訊 (針對重大訊息顯示代號與名稱)
     co_info_html = ""
     if evt.get('co_id') and evt.get('co_name'):
-        co_info_html = f"<div style='font-size:13px; color:#666; margin-bottom:5px;'>🏢 {evt['co_id']} {evt['co_name']}</div>"
+        co_info_html = f"<div style='color:#666;font-size:13px;margin-bottom:4px;'>🏢 {evt['co_id']} {evt['co_name']}</div>"
+    elif evt.get('co_name'):
+        co_info_html = f"<div style='color:#666;font-size:13px;margin-bottom:4px;'>🏢 {evt['co_name']}</div>"
     
     # 使用不帶縮排的 HTML 字串，避免 Markdown 將其誤判為程式碼區塊
     html = f"""<div style='border:1px solid #ddd; padding:15px; border-radius:8px; margin-bottom:10px; background-color:#fff; color:#333;'>
