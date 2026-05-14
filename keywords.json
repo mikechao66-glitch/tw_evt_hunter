@@ -14,7 +14,7 @@
         "損失": false,
         "財務主管": false,
         "分派股利": false,
-        "獨立董事": true,
+        "獨立董事": false,
         "董事會": true
     },
     "news_keywords": {
