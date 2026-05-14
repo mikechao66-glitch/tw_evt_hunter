@@ -16,7 +16,8 @@
         "分派股利": false,
         "獨立董事": false,
         "董事會": false,
-        "國泰人壽": true
+        "國泰人壽": true,
+        "媒體報導": true
     },
     "news_keywords": {
         "超乎預期": false,
