@@ -176,19 +176,6 @@ with st.sidebar:
     
     st.divider()
 
-    # 手動同步按鈕
-    if st.button("🔄 同步雲端資料", use_container_width=True):
-        with st.spinner("正在從 GitHub 下載最新資料..."):
-            p1 = pull_from_github(KEYWORDS_FILE)
-            p2 = pull_from_github("events.db")
-            if p1 or p2:
-                st.session_state['config'] = load_config()
-                st.success("同步完成！")
-                time.sleep(1)
-                st.rerun()
-            else:
-                st.error("同步失敗，請檢查 GitHub Token 設定。")
-    
     st.divider()
     
     st.subheader("🔑 關鍵字設定")
@@ -256,6 +243,21 @@ with st.sidebar:
     
     st.write(f"上次更新時間：{st.session_state['last_update_time']}")
     st.caption("啟用後每 30 分鐘會自動執行一次掃描。")
+
+    st.divider()
+
+    # 手動同步按鈕 (移至最下方)
+    if st.button("🔄 同步雲端資料", use_container_width=True):
+        with st.spinner("正在從 GitHub 下載最新資料..."):
+            p1 = pull_from_github(KEYWORDS_FILE)
+            p2 = pull_from_github("events.db")
+            if p1 or p2:
+                st.session_state['config'] = load_config()
+                st.success("同步完成！")
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.error("同步失敗，請檢查 GitHub Token 設定。")
 
 # -----------------
 # 主畫面 (Main Content)
