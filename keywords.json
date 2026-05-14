@@ -18,8 +18,8 @@
     },
     "news_keywords": {
         "超乎預期": false,
-        "大訂單": true,
-        "旺季": true,
+        "大訂單": false,
+        "旺季": false,
         "產能滿載": true,
         "遭調查": true,
         "遭處分": true,
