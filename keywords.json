@@ -12,8 +12,7 @@
         "庫藏股": false,
         "會計師": false,
         "損失": false,
-        "財務主管": false,
-        "股票面額": true
+        "財務主管": false
     },
     "news_keywords": {
         "超乎預期": true,
