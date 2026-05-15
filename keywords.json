@@ -16,7 +16,8 @@
         "獨立董事": false,
         "董事會": false,
         "股利": false,
-        "過額配售": true
+        "過額配售": true,
+        "認購股款": true
     },
     "news_keywords": {
         "超乎預期": true,
