@@ -10,7 +10,7 @@
         "訴訟": false,
         "停工": false,
         "庫藏股": false,
-        "會計師": true,
+        "會計師": false,
         "損失": false,
         "財務主管": false,
         "獨立董事": false,
