@@ -5,7 +5,7 @@
         "營收": false,
         "EPS": false,
         "每股盈餘": false,
-        "收購": false,
+        "收購": true,
         "減資": true,
         "訴訟": false,
         "停工": false,
