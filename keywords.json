@@ -6,7 +6,7 @@
         "EPS": false,
         "每股盈餘": false,
         "收購": false,
-        "減資": true,
+        "減資": false,
         "訴訟": true,
         "停工": true,
         "庫藏股": false,
