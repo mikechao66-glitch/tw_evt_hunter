@@ -1,0 +1,15 @@
+name: Streamlit Keep Alive
+
+on:
+  schedule:
+    # 台灣時間每天每 30 分鐘執行一次 (使用 12 和 42 分避開整點尖峰)
+    - cron: '12,42 * * * *'
+  workflow_dispatch: # 允許手動從 GitHub 介面觸發
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Streamlit App
+        run: |
+          curl -I https://tw-evt-hunter.streamlit.app/
