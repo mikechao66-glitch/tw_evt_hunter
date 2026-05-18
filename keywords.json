@@ -2,23 +2,17 @@
     "mops_keywords": {
         "自結": true,
         "損益": false,
-        "營收": true,
+        "營收": false,
         "EPS": false,
         "每股盈餘": false,
-        "收購": false,
-        "減資": false,
+        "收購": true,
+        "減資": true,
         "訴訟": false,
         "停工": false,
         "庫藏股": false,
-        "會計師": true,
+        "會計師": false,
         "損失": false,
-        "財務主管": false,
-        "獨立董事": false,
-        "董事會": false,
-        "股利": false,
-        "過額配售": true,
-        "認購股款": true,
-        "股票面額": true
+        "財務主管": false
     },
     "news_keywords": {
         "超乎預期": true,
@@ -28,11 +22,10 @@
         "遭調查": true,
         "遭處分": false,
         "造假": false,
-        "掏空": false,
+        "掏空": true,
         "驚爆": false,
         "大利多": false,
         "大利空": false,
-        "大爆發": true,
-        "AI伺服器": true
+        "大爆發": true
     }
 }
