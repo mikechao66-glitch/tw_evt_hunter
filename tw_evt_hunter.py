@@ -286,8 +286,8 @@ class NewsCrawler:
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
-        # 限定抓取目標網站 (包含指定財經網站，並對中時與工商時報進行精確路徑過濾)
-        self.site_query = "(site:cnyes.com OR site:money.udn.com OR site:ctee.com.tw/stock OR site:chinatimes.com/realtimenews/260410 OR site:ltn.com.tw OR site:wantgoo.com OR site:cmoney.tw)"
+        # 限定抓取目標網站 (包含指定財經網站，並對中時、工商、自由與經濟日報進行精確路徑/版面過濾)
+        self.site_query = "(site:cnyes.com OR site:money.udn.com/money/story/5612 OR site:money.udn.com/money/story/5607 OR site:money.udn.com/money/story/5710 OR site:money.udn.com/money/story/11074 OR site:money.udn.com/money/story/5613 OR site:ctee.com.tw/stock OR site:chinatimes.com/realtimenews/260410 OR site:ec.ltn.com.tw/article OR site:wantgoo.com OR site:cmoney.tw)"
 
     def fetch_news(self):
         two_days_ago = datetime.now() - timedelta(days=2)
